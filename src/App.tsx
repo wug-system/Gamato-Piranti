@@ -2184,8 +2184,12 @@ const AppHeader: React.FC<{ current: SectionId; onChange: (id: SectionId) => voi
     <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-900 text-slate-50 shadow-sm">
-            <span className="text-[14px] font-semibold">G</span>
+         <div className="flex items-center">
+          <img 
+            src="/gamato-piranti.png" 
+            alt="Gamato Piranti Logo" 
+            className="h-9 w-9 object-contain" 
+          />
           </div>
           <div className="leading-tight">
             <p className="text-xs font-semibold tracking-tight text-slate-900">
