@@ -2299,7 +2299,7 @@ const AppHeader: React.FC<{ current: SectionId; onChange: (id: SectionId) => voi
         </nav>
 
         <div className="hidden text-right text-[10px] text-slate-400 sm:block">
-          <p>Offline-first – tanpa login</p>
+          <p>Tanpa Login</p>
         </div>
       </div>
     </header>
@@ -2341,10 +2341,10 @@ export const App: React.FC = () => {
 
         <footer className="mt-4 flex flex-col justify-between gap-3 border-t border-slate-200 pt-4 text-[11px] text-slate-500 md:flex-row md:items-center">
           <p>
-            © {new Date().getFullYear()} Gamato Piranti. Fokus ke utilitas, bukan klaim.
+            © {new Date().getFullYear()} WUG | Gamato Piranti | Fokus ke utilitas.
           </p>
           <p className="text-slate-400">
-            Dibangun dengan React, Vite, dan Tailwind. Siap dideploy ke Netlify, Vercel, dan lainnya.
+            Dibangun dengan ❤ | Ditenagai oleh Vercel
           </p>
         </footer>
       </main>
