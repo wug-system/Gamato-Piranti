@@ -2183,10 +2183,14 @@ const AppHeader: React.FC<{ current: SectionId; onChange: (id: SectionId) => voi
   return (
       <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+          
           <div className="flex items-center gap-2">
+            {/* Logo Default Huruf G */}
             <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-900 text-slate-50 shadow-sm">
               <span className="text-[14px] font-semibold">G</span>
             </div>
+    
+            {/* Branding Gamato Piranti */}
             <div className="leading-tight">
               <p className="text-xs font-semibold tracking-tight text-slate-900">
                 Gamato Piranti
@@ -2196,7 +2200,10 @@ const AppHeader: React.FC<{ current: SectionId; onChange: (id: SectionId) => voi
               </p>
             </div>
           </div>
-        </header>
+    
+        </div> {/* Ini penutup max-w-6xl */}
+      </header>
+    );
 
         <nav className="relative flex items-center justify-center">
           <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50/80 px-2 py-1 text-[11px] shadow-sm">
