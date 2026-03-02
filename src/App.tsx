@@ -1830,9 +1830,332 @@ const DocTools: React.FC = () => {
   );
 };
 
+// ---------- Image Lab (Gambar) ----------
+
+const ImageTools: React.FC = () => {
+  type ImageMode = "compress" | "resize" | "convert" | "rotate";
+
+  const [mode, setMode] = useState<ImageMode>("compress");
+  const [files, setFiles] = useState<File[]>([]);
+  const [quality, setQuality] = useState(75);
+  const [maxWidth, setMaxWidth] = useState(1600);
+  const [maxHeight, setMaxHeight] = useState(1600);
+  const [targetFormat, setTargetFormat] = useState<
+    "original" | "jpeg" | "png" | "webp"
+  >("jpeg");
+  const [rotateDeg, setRotateDeg] = useState(90);
+  const [isWorking, setIsWorking] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
+
+  const onFilesChange = (fileList: FileList | null) => {
+    if (!fileList) return;
+    const arr = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
+    setFiles(arr);
+  };
+
+  const totalSizeMb = useMemo(
+    () =>
+      files.length
+        ? Math.round(
+            (files.reduce((acc, f) => acc + f.size, 0) / 1024 / 1024) * 10
+          ) / 10
+        : 0,
+    [files]
+  );
+
+  const processImages = async () => {
+    if (!files.length) return;
+    setIsWorking(true);
+    setInfo(null);
+
+    try {
+      for (const file of files) {
+        const dataUrl = await fileToDataUrl(file);
+        const img = new Image();
+        img.src = dataUrl;
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error("Gagal memuat gambar."));
+        });
+
+        let drawWidth = img.width;
+        let drawHeight = img.height;
+
+        if (mode === "resize") {
+          const limitW = maxWidth > 0 ? maxWidth : img.width;
+          const limitH = maxHeight > 0 ? maxHeight : img.height;
+          const scale = Math.min(limitW / img.width, limitH / img.height, 1);
+          drawWidth = Math.round(img.width * scale);
+          drawHeight = Math.round(img.height * scale);
+        }
+
+        const angle = mode === "rotate" ? rotateDeg : 0;
+        const radians = (angle * Math.PI) / 180;
+
+        let canvasWidth = drawWidth;
+        let canvasHeight = drawHeight;
+        if (angle === 90 || angle === 270) {
+          canvasWidth = drawHeight;
+          canvasHeight = drawWidth;
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas tidak tersedia.");
+
+        ctx.save();
+        ctx.translate(canvasWidth / 2, canvasHeight / 2);
+        if (angle !== 0) ctx.rotate(radians);
+        ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+        ctx.restore();
+
+        const originalType =
+          file.type && file.type.startsWith("image/")
+            ? file.type
+            : "image/png";
+
+        let mime: string;
+        if (targetFormat === "original") {
+          mime = originalType;
+        } else if (targetFormat === "jpeg") {
+          mime = "image/jpeg";
+        } else if (targetFormat === "png") {
+          mime = "image/png";
+        } else {
+          mime = "image/webp";
+        }
+
+        const q = Math.min(Math.max(quality, 10), 100) / 100;
+        const needQuality = mime === "image/jpeg" || mime === "image/webp";
+
+        const blob = await new Promise<Blob | null>((resolve) => {
+          canvas.toBlob(
+            (b) => resolve(b),
+            mime,
+            needQuality ? q : undefined
+          );
+        });
+
+        if (!blob) continue;
+
+        const base = file.name.replace(/\.[^.]+$/, "");
+        const ext =
+          mime === "image/jpeg"
+            ? "jpg"
+            : mime === "image/png"
+            ? "png"
+            : mime === "image/webp"
+            ? "webp"
+            : "img";
+        const suffix =
+          mode === "compress"
+            ? "compressed"
+            : mode === "resize"
+            ? "resized"
+            : mode === "convert"
+            ? "converted"
+            : "rotated";
+        const filename = `${base}-gp-${suffix}.${ext}`;
+        downloadBlob(blob, filename);
+      }
+
+      setInfo(`${files.length} gambar diproses.`);
+    } catch (err: any) {
+      console.error(err);
+      setInfo(err?.message || "Gagal memproses gambar.");
+    } finally {
+      setIsWorking(false);
+    }
+  };
+
+  return (
+    <Card
+      title="Image Lab – Gambar"
+      description="Kompres, ubah ukuran, konversi, dan putar gambar langsung di browser."
+    >
+      <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div className="space-y-4 text-xs">
+          <div className="flex gap-2 overflow-x-auto rounded-xl bg-slate-50 p-1 font-medium text-slate-600">
+            {(
+              [
+                ["compress", "Kompres"],
+                ["resize", "Ubah ukuran"],
+                ["convert", "Konversi format"],
+                ["rotate", "Putar"],
+              ] as [ImageMode, string][]
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setMode(id)}
+                className={cn(
+                  "whitespace-nowrap rounded-lg px-3 py-1.5 transition",
+                  mode === id ? "bg-white shadow-sm" : "hover:bg-slate-100"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Masukkan gambar</Label>
+            <div className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/70 p-3">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => onFilesChange(e.target.files)}
+                className="block w-full text-[11px] text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-slate-50 hover:file:bg-slate-800"
+              />
+              <p className="text-[11px] text-slate-500">
+                Pilih satu atau beberapa gambar. Semua diproses langsung di browser.
+              </p>
+              {files.length > 0 && (
+                <p className="text-[11px] text-slate-600">
+                  {files.length} file – Total ≈ {totalSizeMb} MB
+                </p>
+              )}
+            </div>
+          </div>
+
+          {mode === "resize" && (
+            <div className="grid gap-3 rounded-xl bg-slate-50/70 p-3 md:grid-cols-2">
+              <Input
+                label="Lebar maksimum (px)"
+                type="number"
+                min={0}
+                value={maxWidth}
+                onChange={(e) => setMaxWidth(parseInt(e.target.value, 10) || 0)}
+              />
+              <Input
+                label="Tinggi maksimum (px)"
+                type="number"
+                min={0}
+                value={maxHeight}
+                onChange={(e) => setMaxHeight(parseInt(e.target.value, 10) || 0)}
+              />
+              <p className="col-span-full text-[11px] text-slate-500">
+                Rasio gambar dipertahankan. Jika 0, ukuran asli akan dipertahankan untuk sisi tersebut.
+              </p>
+            </div>
+          )}
+
+          {mode === "rotate" && (
+            <div className="grid gap-3 rounded-xl bg-slate-50/70 p-3 md:grid-cols-2">
+              <Select
+                label="Derajat putar"
+                value={rotateDeg}
+                onChange={(e) => setRotateDeg(parseInt(e.target.value, 10) || 90)}
+              >
+                <option value={90}>90°</option>
+                <option value={180}>180°</option>
+                <option value={270}>270°</option>
+              </Select>
+              <p className="text-[11px] text-slate-500">
+                Setiap gambar akan diputar dengan sudut yang dipilih.
+              </p>
+            </div>
+          )}
+
+          <div className="grid gap-3 rounded-xl bg-slate-50/70 p-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,2fr)]">
+            <Select
+              label="Format keluaran"
+              value={targetFormat}
+              onChange={(e) =>
+                setTargetFormat(
+                  (e.target.value as "original" | "jpeg" | "png" | "webp") ||
+                    "jpeg"
+                )
+              }
+            >
+              <option value="original">Sesuai asli</option>
+              <option value="jpeg">JPEG</option>
+              <option value="png">PNG</option>
+              <option value="webp">WEBP</option>
+            </Select>
+            <div className="space-y-1.5">
+              <Label>Kualitas (untuk JPEG/WEBP)</Label>
+              <input
+                type="range"
+                min={30}
+                max={100}
+                value={quality}
+                onChange={(e) => setQuality(parseInt(e.target.value, 10) || 75)}
+                className="w-full accent-slate-900"
+              />
+              <p className="text-[11px] text-slate-500">
+                Nilai lebih rendah akan mengecilkan ukuran berkas namun menurunkan detail.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              onClick={processImages}
+              disabled={isWorking || !files.length}
+            >
+              {isWorking ? "Memproses…" : "Proses gambar"}
+            </Button>
+            <p className="text-[11px] text-slate-500">
+              Setiap gambar akan diunduh sebagai berkas baru.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col justify-between gap-3 rounded-2xl bg-slate-950/95 p-4 text-[11px] text-slate-200 shadow-lg shadow-slate-900/40">
+          <div className="space-y-2">
+            <p className="font-medium uppercase tracking-[0.16em] text-slate-400">
+              Mode gambar
+            </p>
+            <ul className="space-y-1.5 text-slate-200">
+              {mode === "compress" && (
+                <>
+                  <li>• Kompres gambar tanpa mengubah dimensi.</li>
+                  <li>• Cocok untuk unggahan web dan dokumen.</li>
+                </>
+              )}
+              {mode === "resize" && (
+                <>
+                  <li>• Ubah ukuran gambar dengan rasio terjaga.</li>
+                  <li>• Berguna untuk thumbnail dan preview.</li>
+                </>
+              )}
+              {mode === "convert" && (
+                <>
+                  <li>• Konversi format antara JPEG, PNG, dan WEBP.</li>
+                  <li>• Dapat membantu mengecilkan ukuran berkas.</li>
+                </>
+              )}
+              {mode === "rotate" && (
+                <>
+                  <li>• Putar orientasi foto yang miring.</li>
+                  <li>• Menerapkan rotasi ke semua gambar yang dipilih.</li>
+                </>
+              )}
+            </ul>
+          </div>
+          <div className="space-y-1 border-t border-slate-800/60 pt-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+              Status
+            </p>
+            <p className="text-[11px] text-slate-200">
+              {info || "Siap menerima berkas gambar."}
+            </p>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+};
+
 // ---------- Misc Utility Shelf ----------
 
 const UtilityShelf: React.FC = () => {
+  const [tab, setTab] = useState<"json" | "bulk" | "media" | "alias">("json");
+
   // JSON & Base64
   const [textInput, setTextInput] = useState("");
   const [jsonPretty, setJsonPretty] = useState("");
@@ -1875,7 +2198,16 @@ const UtilityShelf: React.FC = () => {
     }
   };
 
-  const runBulkOp = (kind: "unique" | "sortAsc" | "sortDesc" | "shuffle" | "number" | "prefix" | "suffix") => {
+  const runBulkOp = (
+    kind:
+      | "unique"
+      | "sortAsc"
+      | "sortDesc"
+      | "shuffle"
+      | "number"
+      | "prefix"
+      | "suffix"
+  ) => {
     if (!bulkInput.trim()) return;
     const lines = bulkInput.split(/\r?\n/);
     let resultLines = [...lines];
@@ -1937,7 +2269,16 @@ const UtilityShelf: React.FC = () => {
       }
 
       const host = u.hostname.replace(/^www\./, "");
-      if (["youtube.com", "youtu.be", "tiktok.com", "instagram.com", "twitter.com", "x.com"].includes(host)) {
+      if (
+        [
+          "youtube.com",
+          "youtu.be",
+          "tiktok.com",
+          "instagram.com",
+          "twitter.com",
+          "x.com",
+        ].includes(host)
+      ) {
         setMediaInfo(
           "Untuk menghormati kebijakan dan DRM masing-masing platform, Gamato Piranti tidak mengunduh langsung dari layanan streaming. Anda bisa menggunakan tool seperti yt-dlp di perangkat Anda dengan perintah: yt-dlp \"URL\"."
         );
@@ -1955,7 +2296,9 @@ const UtilityShelf: React.FC = () => {
     const trimmed = baseEmail.trim();
     const now = new Date();
     const pad = (n: number) => n.toString().padStart(2, "0");
-    const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+    const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(
+      now.getDate()
+    )}`;
 
     let alias = "";
     if (trimmed && trimmed.includes("@")) {
@@ -1965,7 +2308,9 @@ const UtilityShelf: React.FC = () => {
     } else {
       const rand = Math.random().toString(36).slice(2, 8);
       alias = `gp-${rand}-${stamp}@${aliasDomain}`;
-      setAliasInfo("Alamat acak disiapkan. Gunakan dengan layanan temp-mail atau alias pilihan Anda.");
+      setAliasInfo(
+        "Alamat acak disiapkan. Gunakan dengan layanan temp-mail atau alias pilihan Anda."
+      );
     }
 
     setAliasEmail(alias);
@@ -1984,57 +2329,82 @@ const UtilityShelf: React.FC = () => {
   return (
     <Card
       title="Rak Utilitas"
-      description="JSON, Base64, bulk teks/data, helper link, dan perencana alias email."
+      description="Kumpulan alat kecil untuk teks, data, link, dan email."
     >
-      <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-2 text-xs">
-            <Label>Input teks / JSON</Label>
-            <textarea
-              className="h-40 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-900 shadow-sm focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5"
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              placeholder="Tempel teks, JSON, atau data lainnya di sini."
-            />
-            <div className="flex flex-wrap gap-2">
-              <Button variant="ghost" onClick={toJsonPretty}>
-                Rapikan JSON
-              </Button>
-              <Button variant="ghost" onClick={toBase64}>
-                Ke Base64
-              </Button>
+      <div className="space-y-4 text-xs">
+        <div className="flex gap-2 rounded-xl bg-slate-50 p-1 font-medium text-slate-600">
+          {(
+            [
+              ["json", "JSON & Base64"],
+              ["bulk", "Bulk teks/data"],
+              ["media", "Link & media"],
+              ["alias", "Alias email"],
+            ] as ["json" | "bulk" | "media" | "alias", string][]
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTab(id)}
+              className={cn(
+                "whitespace-nowrap rounded-lg px-3 py-1.5 transition",
+                tab === id ? "bg-white shadow-sm" : "hover:bg-slate-100"
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {tab === "json" && (
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label>Input teks / JSON</Label>
+              <textarea
+                className="h-40 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-900 shadow-sm focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5"
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder="Tempel teks, JSON, atau data lainnya di sini."
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button variant="ghost" onClick={toJsonPretty}>
+                  Rapikan JSON
+                </Button>
+                <Button variant="ghost" onClick={toBase64}>
+                  Ke Base64
+                </Button>
+              </div>
             </div>
-          </div>
-          <div className="space-y-2 text-xs">
-            <Label>JSON rapi</Label>
-            <textarea
-              className="h-40 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-900 shadow-sm focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5"
-              value={jsonPretty}
-              onChange={(e) => setJsonPretty(e.target.value)}
-              placeholder="Hasil JSON yang sudah diformat akan muncul di sini."
-            />
-          </div>
-          <div className="space-y-2 text-xs">
-            <Label>Base64</Label>
-            <textarea
-              className="h-24 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-900 shadow-sm focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5"
-              value={base64}
-              onChange={(e) => setBase64(e.target.value)}
-              placeholder="Encode/decode data teks ke Base64."
-            />
-            <div className="flex justify-between gap-2">
-              <Button variant="ghost" onClick={fromBase64} className="flex-1">
-                Dari Base64
-              </Button>
-              <div className="flex-1 text-[10px] text-slate-500">
-                Cocok untuk testing API, token, dan konfigurasi ringan.
+            <div className="space-y-2">
+              <Label>JSON rapi</Label>
+              <textarea
+                className="h-40 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-900 shadow-sm focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5"
+                value={jsonPretty}
+                onChange={(e) => setJsonPretty(e.target.value)}
+                placeholder="Hasil JSON yang sudah diformat akan muncul di sini."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Base64</Label>
+              <textarea
+                className="h-24 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-900 shadow-sm focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5"
+                value={base64}
+                onChange={(e) => setBase64(e.target.value)}
+                placeholder="Encode/decode data teks ke Base64."
+              />
+              <div className="flex justify-between gap-2">
+                <Button variant="ghost" onClick={fromBase64} className="flex-1">
+                  Dari Base64
+                </Button>
+                <div className="flex-1 text-[10px] text-slate-500">
+                  Cocok untuk testing API, token, dan konfigurasi ringan.
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
-        <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1.5fr)] text-xs">
-          <div className="space-y-2 rounded-2xl border border-slate-200 bg-white/70 p-3">
+        {tab === "bulk" && (
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-3">
             <div className="flex items-center justify-between">
               <Label>Bulk Text & Data Lab</Label>
               <span className="text-[10px] text-slate-400">List, ID, email, dll.</span>
@@ -2078,8 +2448,10 @@ const UtilityShelf: React.FC = () => {
               <p className="text-[10px] text-slate-500">{bulkInfo}</p>
             )}
           </div>
+        )}
 
-          <div className="space-y-2 rounded-2xl border border-slate-200 bg-white/70 p-3">
+        {tab === "media" && (
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-3">
             <Label>Helper link & media</Label>
             <input
               type="url"
@@ -2108,8 +2480,10 @@ const UtilityShelf: React.FC = () => {
               Untuk platform streaming besar, gunakan tool resmi mereka atau utilitas baris perintah seperti <code className="rounded bg-slate-100 px-1">yt-dlp "URL"</code> di perangkat Anda.
             </p>
           </div>
+        )}
 
-          <div className="space-y-2 rounded-2xl border border-slate-200 bg-white/70 p-3">
+        {tab === "alias" && (
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-3">
             <Label>Alias & temp email planner</Label>
             <input
               type="email"
@@ -2154,7 +2528,7 @@ const UtilityShelf: React.FC = () => {
               Gamato Piranti tidak membuat inbox otomatis. Gunakan alamat ini bersama layanan temp-mail, alias, atau forwarder pilihan Anda.
             </p>
           </div>
-        </div>
+        )}
       </div>
     </Card>
   );
@@ -2162,15 +2536,15 @@ const UtilityShelf: React.FC = () => {
 
 // ---------- Layout & App Shell ----------
 
-type SectionId = "qr" | "pdf" | "doc" | "util";
+type SectionId = "qr" | "pdf" | "doc" | "img" | "util";
 
-const AppHeader: React.FC<{ current: SectionId; onChange: (id: SectionId) => void }> = ({
-  current,
-  onChange,
-}) => {
-  const [openGroup, setOpenGroup] = useState<null | "kode" | "dokumen" | "dev">(
-    null
-  );
+const AppHeader: React.FC<{
+  current: SectionId;
+  onChange: (id: SectionId) => void;
+}> = ({ current, onChange }) => {
+  const [openGroup, setOpenGroup] = useState<
+    null | "kode" | "dokumen" | "gambar" | "util"
+  >(null);
 
   const navButtonCls = (active: boolean) =>
     cn(
@@ -2180,7 +2554,7 @@ const AppHeader: React.FC<{ current: SectionId; onChange: (id: SectionId) => voi
         : "text-slate-600 hover:bg-slate-100"
     );
 
-return (
+  return (
     <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
         <div className="flex items-center gap-2">
@@ -2271,15 +2645,43 @@ return (
             <div className="relative">
               <button
                 type="button"
-                className={navButtonCls(openGroup === "dev" || current === "util")}
+                className={navButtonCls(openGroup === "gambar" || current === "img")}
                 onClick={() =>
-                  setOpenGroup((prev) => (prev === "dev" ? null : "dev"))
+                  setOpenGroup((prev) => (prev === "gambar" ? null : "gambar"))
+                }
+              >
+                Gambar
+                <span className="text-[10px] text-slate-400">▾</span>
+              </button>
+              {openGroup === "gambar" && (
+                <div className="absolute left-0 right-0 top-[110%] z-30 min-w-[200px] rounded-2xl border border-slate-200 bg-white p-2 text-[11px] shadow-lg">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange("img");
+                      setOpenGroup(null);
+                    }}
+                    className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
+                  >
+                    <span>Image Lab</span>
+                    <span className="text-[9px] text-slate-400">Kompres & ubah</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="relative">
+              <button
+                type="button"
+                className={navButtonCls(openGroup === "util" || current === "util")}
+                onClick={() =>
+                  setOpenGroup((prev) => (prev === "util" ? null : "util"))
                 }
               >
                 Utilitas
                 <span className="text-[10px] text-slate-400">▾</span>
               </button>
-              {openGroup === "dev" && (
+              {openGroup === "util" && (
                 <div className="absolute left-0 right-0 top-[110%] z-30 min-w-[220px] rounded-2xl border border-slate-200 bg-white p-2 text-[11px] shadow-lg">
                   <button
                     type="button"
@@ -2299,7 +2701,7 @@ return (
         </nav>
 
         <div className="hidden text-right text-[10px] text-slate-400 sm:block">
-          <p>Tanpa Login</p>
+          <p>Offline-first – tanpa login</p>
         </div>
       </div>
     </header>
@@ -2324,7 +2726,7 @@ export const App: React.FC = () => {
                 Satu kanvas, banyak alat. Tanpa ribet.
               </h1>
               <p className="mt-1.5 max-w-xl text-[12px] text-slate-300">
-                Gamato Piranti merapikan pekerjaan harian: dari QR code, PDF, sampai dokumen .docx. Sederhana, modern, dan penuh alat yang benar-benar terpakai.
+                Gamato Piranti merapikan pekerjaan harian: dari QR code, PDF, gambar, sampai dokumen .docx. Sederhana, modern, dan penuh alat yang benar-benar terpakai.
               </p>
             </div>
             <div className="flex flex-col items-end gap-2 text-right text-[11px] text-slate-300">
@@ -2337,14 +2739,15 @@ export const App: React.FC = () => {
         {section === "qr" && <QRBarcodeStudio />}
         {section === "pdf" && <PdfTools />}
         {section === "doc" && <DocTools />}
+        {section === "img" && <ImageTools />}
         {section === "util" && <UtilityShelf />}
 
         <footer className="mt-4 flex flex-col justify-between gap-3 border-t border-slate-200 pt-4 text-[11px] text-slate-500 md:flex-row md:items-center">
           <p>
-            © {new Date().getFullYear()} WUG | Gamato Piranti | Fokus ke utilitas.
+            © {new Date().getFullYear()} Gamato Piranti. Fokus ke utilitas, bukan klaim.
           </p>
           <p className="text-slate-400">
-            Dibangun dengan ❤ | Ditenagai oleh Vercel
+            Dibangun dengan React, Vite, dan Tailwind. Siap dideploy ke Netlify, Vercel, dan lainnya.
           </p>
         </footer>
       </main>
