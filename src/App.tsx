@@ -1,9 +1,11 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import QRCode from "qrcode";
 import JsBarcode from "jsbarcode";
 import { PDFDocument, StandardFonts, rgb, degrees } from "pdf-lib";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 import { cn } from "./utils/cn";
+import { sanitizeText, sanitizeUrl, sanitizeFileName, sanitizeNumberString, sanitizePhone } from "./utils/sanitize";
 
 // ---------- Shared UI primitives ----------
 
@@ -195,33 +197,36 @@ const QRBarcodeStudio: React.FC = () => {
   const buildQrPayload = (): string => {
     switch (qrTemplate) {
       case "url": {
-        return qrUrl.trim();
+        const s = sanitizeUrl(qrUrl);
+        return s;
       }
       case "text": {
-        return qrText;
+        return sanitizeText(qrText);
       }
       case "wifi": {
-        if (!qrWifiSsid.trim()) return "";
+        const ssid = sanitizeText(qrWifiSsid);
+        if (!ssid) return "";
         const enc = qrWifiEnc === "nopass" ? "nopass" : qrWifiEnc;
         const hidden = qrWifiHidden ? "true" : "false";
-        const passPart = enc === "nopass" ? "" : `P:${qrWifiPass};`;
-        return `WIFI:T:${enc};S:${qrWifiSsid};${passPart}H:${hidden};;`;
+        const pass = sanitizeText(qrWifiPass);
+        const passPart = enc === "nopass" ? "" : `P:${pass};`;
+        return `WIFI:T:${enc};S:${ssid};${passPart}H:${hidden};;`;
       }
       case "email": {
-        if (!qrEmailTo.trim()) return "";
+        const to = sanitizeText(qrEmailTo).replace(/\s+/g, "");
+        if (!to) return "";
         const params: string[] = [];
-        if (qrEmailSubject.trim()) {
-          params.push(`subject=${encodeURIComponent(qrEmailSubject)}`);
-        }
-        if (qrEmailBody.trim()) {
-          params.push(`body=${encodeURIComponent(qrEmailBody)}`);
-        }
+        const subj = sanitizeText(qrEmailSubject);
+        const body = sanitizeText(qrEmailBody);
+        if (subj) params.push(`subject=${encodeURIComponent(subj)}`);
+        if (body) params.push(`body=${encodeURIComponent(body)}`);
         const query = params.length ? `?${params.join("&")}` : "";
-        return `mailto:${qrEmailTo.trim()}${query}`;
+        return `mailto:${to}${query}`;
       }
       case "phone": {
-        if (!qrPhone.trim()) return "";
-        return `tel:${qrPhone.trim()}`;
+        const phone = qrPhone.replace(/[^\d+]/g, "").replace(/(?!^)[+]/g, "");
+        if (!phone) return "";
+        return `tel:${phone}`;
       }
       default:
         return "";
@@ -441,7 +446,7 @@ const QRBarcodeStudio: React.FC = () => {
                   label="Teks bebas"
                   rows={4}
                   value={qrText}
-                  onChange={(e) => setQrText(e.target.value)}
+                  onChange={(e) => setQrText(sanitizeText(e.target.value))}
                   placeholder="Tulis pesan, catatan, atau instruksi yang akan muncul saat discan."
                 />
               )}
@@ -452,7 +457,7 @@ const QRBarcodeStudio: React.FC = () => {
                     <Input
                       label="Nama WiFi (SSID)"
                       value={qrWifiSsid}
-                      onChange={(e) => setQrWifiSsid(e.target.value)}
+                      onChange={(e) => setQrWifiSsid(sanitizeText(e.target.value))}
                       placeholder="Nama jaringan WiFi"
                     />
                     <Select
@@ -473,7 +478,7 @@ const QRBarcodeStudio: React.FC = () => {
                       type="text"
                       disabled={qrWifiEnc === "nopass"}
                       value={qrWifiPass}
-                      onChange={(e) => setQrWifiPass(e.target.value)}
+                      onChange={(e) => setQrWifiPass(sanitizeText(e.target.value))}
                       placeholder={
                         qrWifiEnc === "nopass"
                           ? "Tidak diperlukan"
@@ -505,20 +510,20 @@ const QRBarcodeStudio: React.FC = () => {
                     label="Kepada (email)"
                     type="email"
                     value={qrEmailTo}
-                    onChange={(e) => setQrEmailTo(e.target.value)}
+                    onChange={(e) => setQrEmailTo(sanitizeText(e.target.value))}
                     placeholder="nama@perusahaan.com"
                   />
                   <Input
                     label="Subjek"
                     value={qrEmailSubject}
-                    onChange={(e) => setQrEmailSubject(e.target.value)}
+                    onChange={(e) => setQrEmailSubject(sanitizeText(e.target.value))}
                     placeholder="Subjek email"
                   />
                   <Textarea
                     label="Isi email"
                     rows={3}
                     value={qrEmailBody}
-                    onChange={(e) => setQrEmailBody(e.target.value)}
+                    onChange={(e) => setQrEmailBody(sanitizeText(e.target.value))}
                     placeholder="Teks email yang akan diisi otomatis."
                   />
                 </div>
@@ -528,7 +533,7 @@ const QRBarcodeStudio: React.FC = () => {
                 <Input
                   label="Nomor telepon"
                   value={qrPhone}
-                  onChange={(e) => setQrPhone(e.target.value)}
+                  onChange={(e) => setQrPhone(sanitizeText(e.target.value))}
                   placeholder="Contoh: +62812..."
                 />
               )}
@@ -538,7 +543,7 @@ const QRBarcodeStudio: React.FC = () => {
               label="Isi Barcode"
               rows={4}
               value={barcodeContent}
-              onChange={(e) => setBarcodeContent(e.target.value)}
+              onChange={(e) => setBarcodeContent(sanitizeText(e.target.value))}
               placeholder="Kode produk, SKU, atau nomor lain yang akan dijadikan barcode."
             />
           )}
@@ -639,13 +644,13 @@ const QRBarcodeStudio: React.FC = () => {
             <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
               Pratinjau langsung
             </p>
-            <div className="flex items-center justify-center rounded-xl bg-slate-900/60 p-4">
+            <div className="flex items-center justify-center rounded-xl bg-slate-900/60 p-4 overflow-x-auto">
               {mode === "qr" ? (
                 qrUrlImage ? (
                   <img
                     src={qrUrlImage}
                     alt="QR preview"
-                    className="h-[220px] w-[220px] rounded-2xl bg-white p-3 shadow-md"
+                    className="h-[220px] w-[220px] max-w-full rounded-2xl bg-white p-3 shadow-md"
                   />
                 ) : (
                   <div className="h-[220px] w-[220px] rounded-2xl border border-dashed border-slate-700/80 bg-slate-900/40" />
@@ -659,7 +664,7 @@ const QRBarcodeStudio: React.FC = () => {
             </div>
             <div className="mt-3 flex justify-between text-[11px] text-slate-400">
               <span>{mode === "qr" ? "PNG 300dpi" : barcodeFormat}</span>
-              <span>◈ tanpa tracking</span>
+              <span>◈ Tanpa Tracking</span>
             </div>
           </div>
 
@@ -925,8 +930,6 @@ const PdfTools: React.FC = () => {
         const [file] = files;
         const bytes = await fileToArrayBuffer(file);
 
-        // Semua level saat ini menggunakan optimasi struktur via pdf-lib.
-        // Perbedaan level lebih ke profil penggunaan dan penandaan berkas.
         const doc = await PDFDocument.load(bytes, { updateMetadata: true });
 
         if (compressLevel === "low") {
@@ -1100,7 +1103,9 @@ const PdfTools: React.FC = () => {
     >
       <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="space-y-4">
-          <div className="flex gap-2 overflow-x-auto rounded-xl bg-slate-50 p-1 text-xs font-medium text-slate-600">
+          <div className="flex gap-2 overflow-x-auto rounded-xl bg-slate-50 p-1 text-xs font-medium text-slate-600 flex-nowrap whitespace-nowrap md:flex-wrap md:whitespace-normal md:overflow-x-visible [&>button]:shrink-0 [&>button]:whitespace-nowrap snap-x snap-mandatory">
+            {/* Ensure tabs don't shrink on mobile to prevent overlap */}
+            
             {(
               [
                 ["compress", "Kompres"],
@@ -1430,8 +1435,9 @@ const DocTools: React.FC = () => {
       ],
     });
 
+    const safeName = sanitizeFileName(fileName || "gamato-dokumen");
     const blob = await Packer.toBlob(doc);
-    downloadBlob(blob, `${fileName || "gamato-dokumen"}.docx`);
+    downloadBlob(blob, `${safeName}.docx`);
     setDocInfo("Dokumen .docx berhasil disiapkan.");
   };
 
@@ -1492,7 +1498,8 @@ const DocTools: React.FC = () => {
       const blob = new Blob([bytes.buffer as ArrayBuffer], {
         type: "application/pdf",
       });
-      downloadBlob(blob, `${fileName || "gamato-dokumen"}.pdf`);
+      const safeName = sanitizeFileName(fileName || "gamato-dokumen");
+      downloadBlob(blob, `${safeName}.pdf`);
       setDocInfo("Dokumen disimpan sebagai PDF sederhana.");
     } catch (err) {
       console.error(err);
@@ -1503,7 +1510,8 @@ const DocTools: React.FC = () => {
   const downloadTxt = () => {
     if (!text) return;
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-    downloadBlob(blob, `${fileName || "gamato-dokumen"}.txt`);
+    const safeName = sanitizeFileName(fileName || "gamato-dokumen");
+    downloadBlob(blob, `${safeName}.txt`);
     setDocInfo("Teks diekspor sebagai .txt.");
   };
 
@@ -1607,7 +1615,7 @@ const DocTools: React.FC = () => {
           <Input
             label="Nama dokumen"
             value={fileName}
-            onChange={(e) => setFileName(e.target.value)}
+            onChange={(e) => setFileName(sanitizeFileName(e.target.value))}
             placeholder="Judul atau nama file"
           />
 
@@ -1977,7 +1985,8 @@ const ImageTools: React.FC = () => {
     >
       <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="space-y-4 text-xs">
-          <div className="flex gap-2 overflow-x-auto rounded-xl bg-slate-50 p-1 font-medium text-slate-600">
+          <div className="flex gap-2 overflow-x-auto rounded-xl bg-slate-50 p-1 font-medium text-slate-600 flex-nowrap whitespace-nowrap [&>button]:shrink-0 [&>button]:whitespace-nowrap">
+            {/* Prevent button shrink to avoid overlap */}
             {(
               [
                 ["compress", "Kompres"],
@@ -2154,7 +2163,18 @@ const ImageTools: React.FC = () => {
 // ---------- Misc Utility Shelf ----------
 
 const UtilityShelf: React.FC = () => {
-  const [tab, setTab] = useState<"json" | "bulk" | "media" | "alias">("json");
+  const [tab, setTab] = useState<
+    | "json"
+    | "bulk"
+    | "media"
+    | "alias"
+    | "tax"
+    | "interest"
+    | "stats"
+    | "wa"
+    | "pass"
+    | "meta"
+  >("json");
 
   // JSON & Base64
   const [textInput, setTextInput] = useState("");
@@ -2177,6 +2197,294 @@ const UtilityShelf: React.FC = () => {
   const [aliasEmail, setAliasEmail] = useState<string | null>(null);
   const [aliasInfo, setAliasInfo] = useState<string | null>(null);
 
+  // Tax calculator
+  const [taxBase, setTaxBase] = useState<string>("");
+  const [taxRate, setTaxRate] = useState<string>("11");
+  const [taxMode, setTaxMode] = useState<"exclusive" | "inclusive">("exclusive");
+  const [taxOutput, setTaxOutput] = useState<string>("");
+
+  // Interest calculator
+  const [princ, setPrinc] = useState<string>("");
+  const [rate, setRate] = useState<string>("10");
+  const [years, setYears] = useState<string>("1");
+  const [compoundPerYear, setCompoundPerYear] = useState<number>(12);
+  const [interestOutput, setInterestOutput] = useState<string>("");
+
+  // Simple statistics
+  const [statsInput, setStatsInput] = useState<string>("");
+  const [statsOutput, setStatsOutput] = useState<string>("");
+
+  // WhatsApp Direct Link
+  const [waPhone, setWaPhone] = useState<string>("");
+  const [waMessage, setWaMessage] = useState<string>("");
+  const [waLink, setWaLink] = useState<string>("");
+
+  // Password & Token Generator
+  const [pwLength, setPwLength] = useState<number>(16);
+  const [pwUpper, setPwUpper] = useState<boolean>(true);
+  const [pwLower, setPwLower] = useState<boolean>(true);
+  const [pwNumber, setPwNumber] = useState<boolean>(true);
+  const [pwSymbol, setPwSymbol] = useState<boolean>(false);
+  const [pwOutput, setPwOutput] = useState<string>("");
+
+  // Image Metadata Remover
+  const [metaFiles, setMetaFiles] = useState<File[]>([]);
+  const [metaInfo, setMetaInfo] = useState<string | null>(null);
+
+  // Token Generator
+  const [tokenBytes, setTokenBytes] = useState<number>(32);
+  const [tokenFormat, setTokenFormat] = useState<"hex" | "base64" | "urlsafe">(
+    "hex"
+  );
+  const [tokenOutput, setTokenOutput] = useState<string>("");
+
+  // Helpers for password & token
+  const cryptoRandom = (maxExclusive: number) => {
+    const buf = new Uint32Array(1);
+    let rand = 0;
+    do {
+      window.crypto.getRandomValues(buf);
+      rand = buf[0] / 2 ** 32;
+    } while (rand === 1);
+    return Math.floor(rand * maxExclusive);
+  };
+
+  const shuffleInPlace = (arr: string[]) => {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = cryptoRandom(i + 1);
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+  };
+
+  const generatePassword = () => {
+    const length = Math.min(Math.max(pwLength, 6), 128);
+    const U = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // exclude easily confused chars
+    const L = "abcdefghijkmnopqrstuvwxyz"; // exclude l
+    const N = "23456789"; // exclude 0,1
+    const S = "!@#$%^&*()-_=+[]{};:,.?";
+
+    let pool = "";
+    const must: string[] = [];
+    if (pwUpper) {
+      pool += U;
+      must.push(U[cryptoRandom(U.length)]);
+    }
+    if (pwLower) {
+      pool += L;
+      must.push(L[cryptoRandom(L.length)]);
+    }
+    if (pwNumber) {
+      pool += N;
+      must.push(N[cryptoRandom(N.length)]);
+    }
+    if (pwSymbol) {
+      pool += S;
+      must.push(S[cryptoRandom(S.length)]);
+    }
+
+    if (!pool) {
+      setPwOutput("");
+      return;
+    }
+
+    const out: string[] = [...must];
+    while (out.length < length) {
+      out.push(pool[cryptoRandom(pool.length)]);
+    }
+    shuffleInPlace(out);
+    setPwOutput(out.join(""));
+  };
+
+  const copyPw = async () => {
+    if (!pwOutput) return;
+    try {
+      await navigator.clipboard.writeText(pwOutput);
+      setBulkInfo("Password disalin ke clipboard.");
+    } catch {
+      setBulkInfo("Gagal menyalin password. Salin manual.");
+    }
+  };
+
+  const bytesToBase64 = (bytes: Uint8Array) => {
+    let bin = "";
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  };
+
+  const generateToken = () => {
+    const n = Math.min(Math.max(tokenBytes, 4), 128);
+    const bytes = new Uint8Array(n);
+    window.crypto.getRandomValues(bytes);
+    if (tokenFormat === "hex") {
+      setTokenOutput(Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join(""));
+    } else if (tokenFormat === "base64") {
+      setTokenOutput(bytesToBase64(bytes));
+    } else {
+      const b64 = bytesToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      setTokenOutput(b64);
+    }
+  };
+
+  const copyToken = async () => {
+    if (!tokenOutput) return;
+    try {
+      await navigator.clipboard.writeText(tokenOutput);
+      setBulkInfo("Token disalin ke clipboard.");
+    } catch {
+      setBulkInfo("Gagal menyalin token. Salin manual.");
+    }
+  };
+
+  const onMetaFilesChange = (fileList: FileList | null) => {
+    if (!fileList) return;
+    const arr = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
+    setMetaFiles(arr);
+  };
+
+  const runMetaClean = async () => {
+    if (!metaFiles.length) return;
+    setMetaInfo(null);
+    try {
+      for (const file of metaFiles) {
+        const dataUrl = await fileToDataUrl(file);
+        const img = new Image();
+        img.src = dataUrl;
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error("Gagal memuat gambar."));
+        });
+
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas tidak tersedia.");
+        ctx.drawImage(img, 0, 0, img.width, img.height);
+
+        // pilih format keluaran sesuai asli (fallback ke PNG)
+        let mime = file.type && file.type.startsWith("image/") ? file.type : "image/png";
+        if (mime !== "image/jpeg" && mime !== "image/png" && mime !== "image/webp") {
+          mime = "image/png";
+        }
+
+        const blob = await new Promise<Blob | null>((resolve) => {
+          canvas.toBlob((b) => resolve(b), mime, mime === "image/jpeg" ? 0.92 : undefined);
+        });
+        if (!blob) continue;
+        const base = sanitizeFileName(file.name.replace(/\.[^.]+$/, "")) || "image";
+        const ext = mime === "image/jpeg" ? "jpg" : mime === "image/png" ? "png" : "webp";
+        downloadBlob(blob, `${base}-clean.${ext}`);
+      }
+      setMetaInfo(`${metaFiles.length} gambar dibersihkan dari metadata dan diunduh.`);
+    } catch (err: any) {
+      console.error(err);
+      setMetaInfo(err?.message || "Gagal menghapus metadata gambar.");
+    }
+  };
+
+  // use centralized sanitizer from utils
+
+  const formatCurrency = (n: number) =>
+    new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(
+      n
+    );
+
+  const runTaxCalc = () => {
+    const base = parseFloat(sanitizeNumberString(taxBase || ""));
+    const r = parseFloat(sanitizeNumberString(taxRate || ""));
+    if (isNaN(base) || isNaN(r)) {
+      setTaxOutput("Masukkan nilai dasar dan tarif pajak yang valid.");
+      return;
+    }
+    const rp = r / 100;
+    if (taxMode === "exclusive") {
+      const pajak = base * rp;
+      const total = base + pajak;
+      setTaxOutput(
+        `Dasar: ${formatCurrency(base)}\nPajak (${r}%): ${formatCurrency(pajak)}\nTotal: ${formatCurrency(total)}`
+      );
+    } else {
+      const pajak = base - base / (1 + rp);
+      const dasar = base - pajak;
+      setTaxOutput(
+        `Total (inklusif): ${formatCurrency(base)}\nTermasuk Pajak (${r}%): ${formatCurrency(pajak)}\nDasar sebelum pajak: ${formatCurrency(dasar)}`
+      );
+    }
+  };
+
+  const runInterestCalc = () => {
+    const P = parseFloat(sanitizeNumberString(princ || ""));
+    const r = parseFloat(sanitizeNumberString(rate || "")) / 100;
+    const t = parseFloat(sanitizeNumberString(years || ""));
+    if (isNaN(P) || isNaN(r) || isNaN(t)) {
+      setInterestOutput("Isi pokok, bunga tahunan (%), dan durasi (tahun) dengan benar.");
+      return;
+    }
+    const simpleInterest = P * r * t;
+    const A_simple = P + simpleInterest;
+    const n = compoundPerYear > 0 ? compoundPerYear : 1;
+    const A_comp = P * Math.pow(1 + r / n, n * t);
+    const compInterest = A_comp - P;
+    setInterestOutput(
+      `Sederhana: Bunga = ${formatCurrency(simpleInterest)} | Akhir = ${formatCurrency(
+        A_simple
+      )}\nMajemuk (${n}x/tahun): Bunga = ${formatCurrency(compInterest)} | Akhir = ${formatCurrency(
+        A_comp
+      )}`
+    );
+  };
+
+  const runStats = () => {
+    const nums = (statsInput || "")
+      .split(/[^0-9.+\-eE]+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => Number(s))
+      .filter((n) => Number.isFinite(n));
+    if (!nums.length) {
+      setStatsOutput("Tidak ada angka valid yang ditemukan.");
+      return;
+    }
+    const sorted = [...nums].sort((a, b) => a - b);
+    const count = nums.length;
+    const sum = nums.reduce((a, b) => a + b, 0);
+    const mean = sum / count;
+    const median =
+      count % 2 === 1
+        ? sorted[(count - 1) / 2]
+        : (sorted[count / 2 - 1] + sorted[count / 2]) / 2;
+    const min = sorted[0];
+    const max = sorted[sorted.length - 1];
+    const variance =
+      nums.reduce((acc, x) => acc + Math.pow(x - mean, 2), 0) / count;
+    const stdev = Math.sqrt(variance);
+    setStatsOutput(
+      `n = ${count}\nΣ = ${sum}\nmean = ${mean}\nmedian = ${median}\nmin = ${min}\nmax = ${max}\nstdev(populasi) = ${stdev}`
+    );
+  };
+
+  const buildWa = () => {
+    const phone = sanitizePhone(waPhone);
+    const msg = sanitizeText(waMessage);
+    if (!phone) {
+      setWaLink("");
+      return;
+    }
+    const link = `https://wa.me/${phone.replace(/^\+/, "")}${
+      msg ? `?text=${encodeURIComponent(msg)}` : ""
+    }`;
+    setWaLink(link);
+  };
+
+  const copyWaLink = async () => {
+    if (!waLink) return;
+    try {
+      await navigator.clipboard.writeText(waLink);
+      setAliasInfo("Tautan WA disalin ke clipboard.");
+    } catch {
+      setAliasInfo("Gagal menyalin tautan. Salin manual.");
+    }
+  };
   const toJsonPretty = () => {
     try {
       const obj = JSON.parse(textInput);
@@ -2187,12 +2495,14 @@ const UtilityShelf: React.FC = () => {
   };
 
   const toBase64 = () => {
-    setBase64(btoa(unescape(encodeURIComponent(textInput))));
+    const safe = sanitizeText(textInput);
+    setBase64(btoa(unescape(encodeURIComponent(safe))));
   };
 
   const fromBase64 = () => {
     try {
-      setTextInput(decodeURIComponent(escape(atob(base64))));
+      const decoded = decodeURIComponent(escape(atob(base64)));
+      setTextInput(sanitizeText(decoded));
     } catch {
       // ignore
     }
@@ -2253,15 +2563,19 @@ const UtilityShelf: React.FC = () => {
   const analyzeMedia = () => {
     setMediaInfo(null);
     setDirectDownload(null);
-    if (!mediaUrl.trim()) return;
+    const safe = sanitizeUrl(mediaUrl);
+    if (!safe) {
+      setMediaInfo("URL tidak valid atau tidak didukung. Hanya http/https yang diperbolehkan.");
+      return;
+    }
 
     try {
-      const u = new URL(mediaUrl.trim());
+      const u = new URL(safe);
       const lower = u.pathname.toLowerCase();
       const isDirect = /\.(mp4|webm|mov|m4a|mp3|wav)$/i.test(lower);
 
       if (isDirect) {
-        setDirectDownload(mediaUrl.trim());
+        setDirectDownload(safe);
         setMediaInfo(
           "Link ini terlihat seperti berkas langsung. Anda bisa mengunduhnya dengan tombol di bawah."
         );
@@ -2332,21 +2646,39 @@ const UtilityShelf: React.FC = () => {
       description="Kumpulan alat kecil untuk teks, data, link, dan email."
     >
       <div className="space-y-4 text-xs">
-        <div className="flex gap-2 rounded-xl bg-slate-50 p-1 font-medium text-slate-600">
+        <div className="flex gap-2 overflow-x-auto rounded-xl bg-slate-50 p-1 font-medium text-slate-600 flex-nowrap whitespace-nowrap md:flex-wrap md:whitespace-normal md:overflow-x-visible snap-x snap-mandatory">
           {(
             [
               ["json", "JSON & Base64"],
               ["bulk", "Bulk teks/data"],
               ["media", "Link & media"],
               ["alias", "Alias email"],
-            ] as ["json" | "bulk" | "media" | "alias", string][]
+              ["tax", "Kalkulator pajak"],
+              ["interest", "Hitung bunga"],
+              ["stats", "Statistik sederhana"],
+              ["wa", "WA Link"],
+              ["pass", "Password & Token"],
+              ["meta", "Hapus metadata"],
+            ] as [
+              | "json"
+              | "bulk"
+              | "media"
+              | "alias"
+              | "tax"
+              | "interest"
+              | "stats"
+              | "wa"
+              | "pass"
+              | "meta",
+              string
+            ][]
           ).map(([id, label]) => (
             <button
               key={id}
               type="button"
               onClick={() => setTab(id)}
               className={cn(
-                "whitespace-nowrap rounded-lg px-3 py-1.5 transition",
+                "whitespace-nowrap rounded-lg px-3 py-1.5 transition shrink-0 snap-start",
                 tab === id ? "bg-white shadow-sm" : "hover:bg-slate-100"
               )}
             >
@@ -2489,14 +2821,14 @@ const UtilityShelf: React.FC = () => {
               type="email"
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-900 shadow-sm focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5"
               value={baseEmail}
-              onChange={(e) => setBaseEmail(e.target.value)}
+              onChange={(e) => setBaseEmail(sanitizeText(e.target.value))}
               placeholder="Email utama (opsional, untuk plus-address)"
             />
-            <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-2 text-[11px]">
+            <div className="grid gap-2 text-[11px] md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
               <Input
                 label="Domain alternatif"
                 value={aliasDomain}
-                onChange={(e) => setAliasDomain(e.target.value)}
+                onChange={(e) => setAliasDomain(sanitizeText(e.target.value))}
                 placeholder="contoh: inbox.mydomain.com"
               />
             </div>
@@ -2529,10 +2861,466 @@ const UtilityShelf: React.FC = () => {
             </p>
           </div>
         )}
+
+        {tab === "tax" && (
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-3">
+            <div className="flex items-center justify-between">
+              <Label>Kalkulator Pajak</Label>
+              <span className="text-[10px] text-slate-400">Eksklusif/Inklusif</span>
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              <Input
+                label="Nilai dasar (Rp)"
+                value={taxBase}
+                onChange={(e) => setTaxBase(e.target.value)}
+                placeholder="contoh: 1000000"
+              />
+              <Input
+                label="Tarif pajak (%)"
+                value={taxRate}
+                onChange={(e) => setTaxRate(e.target.value)}
+                placeholder="contoh: 11"
+              />
+              <div className="space-y-1.5">
+                <Label>Mode hitung</Label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTaxMode("exclusive")}
+                    className={cn(
+                      "rounded-full px-2 py-0.5",
+                      taxMode === "exclusive"
+                        ? "bg-slate-900 text-slate-50"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    )}
+                  >
+                    Eksklusif (belum termasuk pajak)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTaxMode("inclusive")}
+                    className={cn(
+                      "rounded-full px-2 py-0.5",
+                      taxMode === "inclusive"
+                        ? "bg-slate-900 text-slate-50"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    )}
+                  >
+                    Inklusif (sudah termasuk pajak)
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={runTaxCalc}>Hitung</Button>
+              <p className="text-[10px] text-slate-500">
+                Hasil memakai format mata uang IDR.
+              </p>
+            </div>
+            {taxOutput && (
+              <pre className="whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-[11px] text-slate-800">
+                {taxOutput}
+              </pre>
+            )}
+          </div>
+        )}
+
+        {tab === "interest" && (
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-3">
+            <div className="flex items-center justify-between">
+              <Label>Hitung Bunga</Label>
+              <span className="text-[10px] text-slate-400">Sederhana & majemuk</span>
+            </div>
+            <div className="grid gap-3 md:grid-cols-4">
+              <Input
+                label="Pokok (Rp)"
+                value={princ}
+                onChange={(e) => setPrinc(e.target.value)}
+                placeholder="contoh: 5000000"
+              />
+              <Input
+                label="Bunga tahunan (%)"
+                value={rate}
+                onChange={(e) => setRate(e.target.value)}
+                placeholder="contoh: 10"
+              />
+              <Input
+                label="Durasi (tahun)"
+                value={years}
+                onChange={(e) => setYears(e.target.value)}
+                placeholder="contoh: 3"
+              />
+              <Select
+                label="Frekuensi majemuk"
+                value={compoundPerYear}
+                onChange={(e) => setCompoundPerYear(parseInt(e.target.value, 10) || 1)}
+              >
+                <option value={1}>Tahunan (1x)</option>
+                <option value={2}>Semesteran (2x)</option>
+                <option value={4}>Kuartalan (4x)</option>
+                <option value={12}>Bulanan (12x)</option>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={runInterestCalc}>Hitung</Button>
+              <p className="text-[10px] text-slate-500">Nilai indikatif.</p>
+            </div>
+            {interestOutput && (
+              <pre className="whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-[11px] text-slate-800">
+                {interestOutput}
+              </pre>
+            )}
+          </div>
+        )}
+
+        {tab === "stats" && (
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-3">
+            <div className="flex items-center justify-between">
+              <Label>Statistik Sederhana</Label>
+              <span className="text-[10px] text-slate-400">mean, median, min, max</span>
+            </div>
+            <Textarea
+              rows={5}
+              value={statsInput}
+              onChange={(e) => setStatsInput(e.target.value)}
+              placeholder="Tempel angka dipisah spasi, koma, atau baris baru."
+            />
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={runStats}>Analisis</Button>
+              <p className="text-[10px] text-slate-500">
+                Hanya angka yang dihitung, karakter lain diabaikan.
+              </p>
+            </div>
+            {statsOutput && (
+              <pre className="whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-[11px] text-slate-800">
+                {statsOutput}
+              </pre>
+            )}
+          </div>
+        )}
+
+        {tab === "wa" && (
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-3">
+            <div className="flex items-center justify-between">
+              <Label>WhatsApp Direct Link</Label>
+              <span className="text-[10px] text-slate-400">Tanpa menyimpan kontak</span>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                label="Nomor telepon (dengan kode negara, mis. +62...)"
+                value={waPhone}
+                onChange={(e) => setWaPhone(sanitizePhone(e.target.value))}
+                placeholder="Contoh: +62812xxxxxxx"
+              />
+
+              <div className="space-y-1.5">
+                <Label>Template pesan</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      const name = prompt('Nama penerima (opsional):') || '';
+                      const safe = sanitizeText(name);
+                      setWaMessage(
+                        (safe ? `Halo ${safe}, ` : 'Halo, ') +
+                          'apa kabar? Saya ingin menghubungi terkait sesuatu.'
+                      );
+                    }}
+                  >
+                    Salam
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      const inv = prompt('Nomor invoice:') || '';
+                      const amt = prompt('Jumlah (opsional):') || '';
+                      const safeInv = sanitizeText(inv);
+                      const safeAmt = sanitizeText(amt);
+                      setWaMessage(
+                        `Halo, ini tindak lanjut terkait invoice ${safeInv}. ${
+                          safeAmt ? `Total ${safeAmt}. ` : ''
+                        }Mohon konfirmasi penerimaan atau bila ada pertanyaan.`
+                      );
+                    }}
+                  >
+                    Follow-up
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      const inv = prompt('Nomor invoice/kode transaksi:') || '';
+                      const safeInv = sanitizeText(inv);
+                      setWaMessage(
+                        `Halo, pembayaran untuk ${safeInv} telah kami terima. Terima kasih! Jika ada yang perlu dibantu lagi, kabari ya.`
+                      );
+                    }}
+                  >
+                    Konfirmasi bayar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      const addr = prompt('Alamat/tautan lokasi:') || '';
+                      const time = prompt('Estimasi waktu (opsional):') || '';
+                      const safeAddr = sanitizeText(addr);
+                      const safeTime = sanitizeText(time);
+                      setWaMessage(
+                        `Halo, berikut alamat/lokasi tujuan: ${safeAddr}. ${
+                          safeTime ? `Estimasi waktu: ${safeTime}. ` : ''
+                        }Terima kasih.`
+                      );
+                    }}
+                  >
+                    Kirim alamat
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      const date = prompt('Tanggal (mis. 12/03/2026):') || '';
+                      const hour = prompt('Jam (opsional):') || '';
+                      const topic = prompt('Topik/agenda (opsional):') || '';
+                      const safeDate = sanitizeText(date);
+                      const safeHour = sanitizeText(hour);
+                      const safeTopic = sanitizeText(topic);
+                      setWaMessage(
+                        `Halo, mengingatkan jadwal pada ${safeDate}${
+                          safeHour ? ` pukul ${safeHour}` : ''
+                        }${safeTopic ? ` untuk ${safeTopic}` : ''}. Terima kasih.`
+                      );
+                    }}
+                  >
+                    Reminder
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <Textarea
+              label="Pesan (opsional)"
+              rows={3}
+              value={waMessage}
+              onChange={(e) => setWaMessage(sanitizeText(e.target.value))}
+              placeholder="Tulis pesan Anda di sini, atau gunakan template di atas."
+            />
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={buildWa}>Buat tautan</Button>
+              <Button variant="ghost" onClick={copyWaLink} disabled={!waLink}>
+                Salin tautan
+              </Button>
+            </div>
+            {waLink && (
+              <a
+                href={waLink}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex justify-between rounded-xl border border-slate-200 bg-slate-900 px-3 py-1.5 text-[10px] font-medium text-slate-50 shadow-sm hover:bg-slate-800"
+              >
+                <span>Buka chat</span>
+                <span className="text-slate-300">wa.me</span>
+              </a>
+            )}
+          </div>
+        )}
+
+        {tab === "pass" && (
+          <div className="space-y-4 rounded-2xl border border-slate-200 bg-white/70 p-3">
+            <div className="flex items-center justify-between">
+              <Label>Password & Token Generator</Label>
+              <span className="text-[10px] text-slate-400">Web Crypto aman</span>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <Input
+                label="Panjang password"
+                type="number"
+                min={6}
+                max={128}
+                value={pwLength}
+                onChange={(e) => setPwLength(parseInt(e.target.value, 10) || 16)}
+              />
+              <div className="space-y-1.5">
+                <Label>Karakter yang digunakan</Label>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+                  <label className="inline-flex items-center gap-1">
+                    <input type="checkbox" checked={pwUpper} onChange={(e) => setPwUpper(e.target.checked)} />
+                    <span>Huruf besar</span>
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input type="checkbox" checked={pwLower} onChange={(e) => setPwLower(e.target.checked)} />
+                    <span>Huruf kecil</span>
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input type="checkbox" checked={pwNumber} onChange={(e) => setPwNumber(e.target.checked)} />
+                    <span>Angka</span>
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input type="checkbox" checked={pwSymbol} onChange={(e) => setPwSymbol(e.target.checked)} />
+                    <span>Simbol</span>
+                  </label>
+                </div>
+              </div>
+              <div className="flex items-end gap-2">
+                <Button variant="ghost" onClick={generatePassword} className="flex-1">Buat password</Button>
+                <Button variant="ghost" onClick={copyPw} disabled={!pwOutput} className="flex-1">Salin</Button>
+              </div>
+            </div>
+
+            <Input
+              label="Password"
+              value={pwOutput}
+              onChange={(e) => setPwOutput(e.target.value)}
+              placeholder="Klik 'Buat password' untuk membuat kata sandi acak."
+            />
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <Input
+                label="Panjang token (byte)"
+                type="number"
+                min={4}
+                max={128}
+                value={tokenBytes}
+                onChange={(e) => setTokenBytes(parseInt(e.target.value, 10) || 32)}
+              />
+              <Select
+                label="Format token"
+                value={tokenFormat}
+                onChange={(e) => setTokenFormat((e.target.value as any) || "hex")}
+              >
+                <option value="hex">Hex</option>
+                <option value="base64">Base64</option>
+                <option value="urlsafe">URL-safe Base64</option>
+              </Select>
+              <div className="flex items-end gap-2">
+                <Button variant="ghost" onClick={generateToken} className="flex-1">Buat token</Button>
+                <Button variant="ghost" onClick={copyToken} disabled={!tokenOutput} className="flex-1">Salin</Button>
+              </div>
+            </div>
+
+            <Textarea
+              label="Token"
+              rows={3}
+              value={tokenOutput}
+              onChange={(e) => setTokenOutput(e.target.value)}
+              placeholder="Klik 'Buat token' untuk menghasilkan token acak."
+            />
+
+            <p className="text-[10px] text-slate-500">
+              Disarankan menyimpan password/token secara aman. Gamato Piranti tidak mengirimkan data ini ke server mana pun.
+            </p>
+          </div>
+        )}
+
+        {tab === "meta" && (
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-3">
+            <div className="flex items-center justify-between">
+              <Label>Hapus Metadata Gambar</Label>
+              <span className="text-[10px] text-slate-400">Privacy tool</span>
+            </div>
+            <div className="space-y-2">
+              <Label>Pilih gambar</Label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => onMetaFilesChange(e.target.files)}
+                className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-900 shadow-sm focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-slate-50 hover:file:bg-slate-800"
+              />
+              {metaFiles.length > 0 && (
+                <p className="text-[11px] text-slate-600">{metaFiles.length} gambar dipilih.</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={runMetaClean} disabled={!metaFiles.length}>Bersihkan metadata</Button>
+              <p className="text-[10px] text-slate-500">EXIF/metadata dihapus dengan re-encode via canvas, gambar diunduh ulang.</p>
+            </div>
+            {metaInfo && (
+              <p className="text-[10px] text-slate-600">{metaInfo}</p>
+            )}
+          </div>
+        )}
       </div>
     </Card>
   );
 };
+
+// ---------- Static Pages: Privacy & Terms ----------
+
+const PrivacyPage: React.FC = () => (
+  <Card title="Privacy Policy for Gamato Piranti" description="Terakhir Diperbarui: 2 Maret 2026">
+    <div className="space-y-3 text-[13px] leading-relaxed text-slate-700">
+      <p>
+        Di Gamato Piranti, yang beralamat di https://gamato-piranti.vercel.app/, salah satu prioritas utama kami adalah privasi pengunjung kami. Dokumen Kebijakan Privasi ini berisi jenis informasi yang dikumpulkan dan dicatat oleh Gamato Piranti dan bagaimana kami menggunakannya.
+      </p>
+      <div className="space-y-2">
+        <p className="font-semibold text-slate-900">1. Informasi yang Kami Kumpulkan</p>
+        <p>
+          Sebagai Digital Tool Studio, sebagian besar alat kami bekerja di sisi klien (browser). Kami tidak secara sengaja mengumpulkan data pribadi sensitif kecuali jika Anda memberikannya secara sukarela melalui formulir kontak.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <p className="font-semibold text-slate-900">2. Log Files & Analytics</p>
+        <p>
+          Gamato Piranti mengikuti prosedur standar penggunaan file log. Informasi yang dikumpulkan termasuk alamat protokol internet (IP), jenis browser, Penyedia Layanan Internet (ISP), stempel tanggal dan waktu, serta halaman rujukan. Ini dilakukan melalui infrastruktur Vercel untuk analisis performa web.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <p className="font-semibold text-slate-900">3. Keamanan Data (WUG Secure Standard)</p>
+        <p>
+          Kami menerapkan sistem keamanan WUG Secure System untuk memastikan bahwa setiap input data pada tools kami diproses dengan enkripsi standar dan tidak disalahgunakan oleh pihak ketiga.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <p className="font-semibold text-slate-900">4. Kebijakan Pihak Ketiga</p>
+        <p>
+          Kebijakan Privasi Gamato Piranti tidak berlaku untuk pengiklan atau situs web lain. Kami menyarankan Anda untuk berkonsultasi dengan Kebijakan Privasi masing-masing dari server pihak ketiga tersebut untuk informasi lebih rinci.
+        </p>
+      </div>
+      <div className="pt-2">
+        <a href="#/" className="text-xs font-medium text-slate-700 underline hover:text-slate-900">Kembali ke beranda</a>
+      </div>
+    </div>
+  </Card>
+);
+
+const TermsPage: React.FC = () => (
+  <Card title="Terms of Service for Gamato Piranti" description="Terakhir Diperbarui: 2 Maret 2026">
+    <div className="space-y-3 text-[13px] leading-relaxed text-slate-700">
+      <div className="space-y-2">
+        <p className="font-semibold text-slate-900">1. Penerimaan Ketentuan</p>
+        <p>
+          Dengan mengakses situs web ini, kami menganggap Anda menerima syarat dan ketentuan ini secara penuh. Jangan terus menggunakan Gamato Piranti jika Anda tidak menerima semua syarat dan ketentuan yang tercantum di halaman ini.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <p className="font-semibold text-slate-900">2. Lisensi Penggunaan</p>
+        <p>
+          Gamato Piranti memberikan izin untuk menggunakan alat digital yang tersedia untuk penggunaan pribadi maupun komersial ringan. Namun, Anda dilarang:
+        </p>
+        <ul className="list-disc pl-5">
+          <li>Menyalin atau memodifikasi materi tanpa izin.</li>
+          <li>Menggunakan tools untuk tujuan ilegal atau melanggar hukum.</li>
+          <li>Melakukan tindakan yang merusak integritas infrastruktur server kami.</li>
+        </ul>
+      </div>
+      <div className="space-y-2">
+        <p className="font-semibold text-slate-900">3. Batasan Tanggung Jawab</p>
+        <p>
+          Semua alat di Gamato Piranti disediakan "sebagaimana adanya" (as is). Kami tidak memberikan jaminan bahwa alat akan selalu bebas dari kesalahan atau gangguan. Gamato Piranti tidak bertanggung jawab atas kerugian yang timbul dari penggunaan atau ketidakmampuan menggunakan layanan kami.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <p className="font-semibold text-slate-900">4. Perubahan Layanan</p>
+        <p>
+          Sebagai studio inovasi digital, kami berhak menambah atau menghapus fitur/tools tanpa pemberitahuan sebelumnya demi pengembangan kualitas layanan.
+        </p>
+      </div>
+      <div className="pt-2">
+        <a href="#/" className="text-xs font-medium text-slate-700 underline hover:text-slate-900">Kembali ke beranda</a>
+      </div>
+    </div>
+  </Card>
+);
 
 // ---------- Layout & App Shell ----------
 
@@ -2545,6 +3333,37 @@ const AppHeader: React.FC<{
   const [openGroup, setOpenGroup] = useState<
     null | "kode" | "dokumen" | "gambar" | "util"
   >(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const navRef = useRef<HTMLDivElement | null>(null);
+
+  // Close desktop dropdown when clicking outside nav
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (navRef.current && !navRef.current.contains(target)) {
+        setOpenGroup(null);
+      }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  // Lock scroll when mobile menu is open
+  useEffect(() => {
+    const prevBody = document.body.style.overflow;
+    const prevHtml = document.documentElement.style.overflow;
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = prevBody || "";
+      document.documentElement.style.overflow = prevHtml || "";
+    }
+    return () => {
+      document.body.style.overflow = prevBody || "";
+      document.documentElement.style.overflow = prevHtml || "";
+    };
+  }, [mobileOpen]);
 
   const navButtonCls = (active: boolean) =>
     cn(
@@ -2555,8 +3374,9 @@ const AppHeader: React.FC<{
     );
 
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur-md">
+    <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+        {/* Brand */}
         <div className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-900 text-slate-50 shadow-sm">
             <span className="text-[14px] font-semibold">G</span>
@@ -2571,144 +3391,294 @@ const AppHeader: React.FC<{
           </div>
         </div>
 
-        <nav className="relative flex items-center justify-center">
+        {/* Desktop nav (center) */}
+        <nav ref={navRef} className="relative hidden items-center justify-center md:flex">
           <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50/80 px-2 py-1 text-[11px] shadow-sm">
+            {/* Kode */}
             <div className="relative">
               <button
                 type="button"
                 className={navButtonCls(openGroup === "kode" || current === "qr")}
-                onClick={() =>
-                  setOpenGroup((prev) => (prev === "kode" ? null : "kode"))
-                }
+                onClick={() => setOpenGroup((prev) => (prev === "kode" ? null : "kode"))}
               >
                 Kode
                 <span className="text-[10px] text-slate-400">▾</span>
               </button>
               {openGroup === "kode" && (
-                <div className="absolute left-0 right-0 top-[110%] z-30 min-w-[180px] rounded-2xl border border-slate-200 bg-white p-2 text-[11px] shadow-lg">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChange("qr");
-                      setOpenGroup(null);
-                    }}
-                    className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
-                  >
-                    <span>QR & Barcode Studio</span>
-                    <span className="text-[9px] text-slate-400">Utama</span>
-                  </button>
+                <div className="absolute left-1/2 top-[110%] z-[200] w-[min(92vw,340px)] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 text-[12px] leading-6 shadow-2xl">
+                  <div className="space-y-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onChange("qr");
+                        setOpenGroup(null);
+                      }}
+                      className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
+                    >
+                      <span>QR & Barcode Studio</span>
+                      <span className="text-[9px] text-slate-400">Utama</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
 
+            {/* Dokumen */}
             <div className="relative">
               <button
                 type="button"
-                className={navButtonCls(
-                  openGroup === "dokumen" || current === "pdf" || current === "doc"
-                )}
-                onClick={() =>
-                  setOpenGroup((prev) => (prev === "dokumen" ? null : "dokumen"))
-                }
+                className={navButtonCls(openGroup === "dokumen" || current === "pdf" || current === "doc")}
+                onClick={() => setOpenGroup((prev) => (prev === "dokumen" ? null : "dokumen"))}
               >
                 Dokumen
                 <span className="text-[10px] text-slate-400">▾</span>
               </button>
               {openGroup === "dokumen" && (
-                <div className="absolute left-0 right-0 top-[110%] z-30 min-w-[220px] rounded-2xl border border-slate-200 bg-white p-2 text-[11px] shadow-lg">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChange("pdf");
-                      setOpenGroup(null);
-                    }}
-                    className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
-                  >
-                    <span>PDF Lab – Suite</span>
-                    <span className="text-[9px] text-slate-400">Toolkit lengkap</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChange("doc");
-                      setOpenGroup(null);
-                    }}
-                    className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
-                  >
-                    <span>Doc Studio</span>
-                    <span className="text-[9px] text-slate-400">.docx & teks</span>
-                  </button>
+                <div className="absolute left-1/2 top-[110%] z-[200] w-[min(92vw,380px)] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 text-[12px] leading-6 shadow-2xl">
+                  <div className="space-y-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onChange("pdf");
+                        setOpenGroup(null);
+                      }}
+                      className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
+                    >
+                      <span>PDF Lab – Suite</span>
+                      <span className="text-[9px] text-slate-400">Toolkit lengkap</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onChange("doc");
+                        setOpenGroup(null);
+                      }}
+                      className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
+                    >
+                      <span>Doc Studio</span>
+                      <span className="text-[9px] text-slate-400">.docx & teks</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
 
+            {/* Gambar */}
             <div className="relative">
               <button
                 type="button"
                 className={navButtonCls(openGroup === "gambar" || current === "img")}
-                onClick={() =>
-                  setOpenGroup((prev) => (prev === "gambar" ? null : "gambar"))
-                }
+                onClick={() => setOpenGroup((prev) => (prev === "gambar" ? null : "gambar"))}
               >
                 Gambar
                 <span className="text-[10px] text-slate-400">▾</span>
               </button>
               {openGroup === "gambar" && (
-                <div className="absolute left-0 right-0 top-[110%] z-30 min-w-[200px] rounded-2xl border border-slate-200 bg-white p-2 text-[11px] shadow-lg">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChange("img");
-                      setOpenGroup(null);
-                    }}
-                    className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
-                  >
-                    <span>Image Lab</span>
-                    <span className="text-[9px] text-slate-400">Kompres & ubah</span>
-                  </button>
+                <div className="absolute left-1/2 top-[110%] z-[200] w-[min(92vw,340px)] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 text-[12px] leading-6 shadow-2xl">
+                  <div className="space-y-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onChange("img");
+                        setOpenGroup(null);
+                      }}
+                      className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
+                    >
+                      <span>Image Lab</span>
+                      <span className="text-[9px] text-slate-400">Kompres & ubah</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
 
+            {/* Utilitas */}
             <div className="relative">
               <button
                 type="button"
                 className={navButtonCls(openGroup === "util" || current === "util")}
-                onClick={() =>
-                  setOpenGroup((prev) => (prev === "util" ? null : "util"))
-                }
+                onClick={() => setOpenGroup((prev) => (prev === "util" ? null : "util"))}
               >
                 Utilitas
                 <span className="text-[10px] text-slate-400">▾</span>
               </button>
               {openGroup === "util" && (
-                <div className="absolute left-0 right-0 top-[110%] z-30 min-w-[220px] rounded-2xl border border-slate-200 bg-white p-2 text-[11px] shadow-lg">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChange("util");
-                      setOpenGroup(null);
-                    }}
-                    className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
-                  >
-                    <span>Rak Utilitas</span>
-                    <span className="text-[9px] text-slate-400">JSON, bulk & link</span>
-                  </button>
+                <div className="absolute left-1/2 top-[110%] z-[200] w-[min(92vw,380px)] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 text-[12px] leading-6 shadow-2xl">
+                  <div className="space-y-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onChange("util");
+                        setOpenGroup(null);
+                      }}
+                      className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
+                    >
+                      <span>Rak Utilitas</span>
+                      <span className="text-[9px] text-slate-400">JSON, bulk & link</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </nav>
 
-        <div className="hidden text-right text-[10px] text-slate-400 sm:block">
-          <p>Tanpa Login</p>
+        {/* Right side: desktop hint + mobile burger */}
+        <div className="flex items-center gap-2">
+          <div className="hidden text-right text-[10px] text-slate-400 md:block">
+            <p>Tanpa Login</p>
+          </div>
+          <button
+            type="button"
+            aria-label="Buka menu"
+            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-700 shadow-sm hover:bg-slate-50 md:hidden"
+            onClick={() => setMobileOpen(true)}
+          >
+            <span className="block h-0.5 w-5 bg-slate-900"></span>
+            <span className="mt-1 block h-0.5 w-5 bg-slate-900"></span>
+            <span className="mt-1 block h-0.5 w-5 bg-slate-900"></span>
+          </button>
         </div>
       </div>
+
+      {/* Mobile drawer (portal to body to avoid clipping by header/backdrop) */}
+      {mobileOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] md:hidden" role="dialog" aria-modal="true">
+            <div
+              className="absolute inset-0 bg-slate-900/50"
+              onClick={() => setMobileOpen(false)}
+            />
+            <div className="absolute inset-0 flex">
+              <div className="ml-auto h-full w-full max-w-full overflow-y-auto bg-white p-0 shadow-xl">
+                <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur">
+                  <p className="text-sm font-semibold text-slate-900">Menu</p>
+                  <button
+                    type="button"
+                    aria-label="Tutup menu"
+                    className="rounded-full p-2 text-slate-600 hover:bg-slate-100"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <span className="block h-5 w-5">✕</span>
+                  </button>
+                </div>
+                <div className="space-y-4 p-4 text-[13px]">
+                  <div>
+                    <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">Kode</p>
+                    <button
+                      className="flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-3 text-left text-slate-700 hover:bg-slate-50"
+                      onClick={() => {
+                        onChange("qr");
+                        setMobileOpen(false);
+                      }}
+                    >
+                      <span>QR & Barcode Studio</span>
+                      {current === "qr" && <span className="text-[10px] text-slate-400">Aktif</span>}
+                    </button>
+                  </div>
+
+                  <div>
+                    <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">Dokumen</p>
+                    <div className="space-y-2">
+                      <button
+                        className="flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-3 text-left text-slate-700 hover:bg-slate-50"
+                        onClick={() => {
+                          onChange("pdf");
+                          setMobileOpen(false);
+                        }}
+                      >
+                        <span>PDF Lab – Suite</span>
+                        {current === "pdf" && <span className="text-[10px] text-slate-400">Aktif</span>}
+                      </button>
+                      <button
+                        className="flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-3 text-left text-slate-700 hover:bg-slate-50"
+                        onClick={() => {
+                          onChange("doc");
+                          setMobileOpen(false);
+                        }}
+                      >
+                        <span>Doc Studio</span>
+                        {current === "doc" && <span className="text-[10px] text-slate-400">Aktif</span>}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">Gambar</p>
+                    <button
+                      className="flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-3 text-left text-slate-700 hover:bg-slate-50"
+                      onClick={() => {
+                        onChange("img");
+                        setMobileOpen(false);
+                      }}
+                    >
+                      <span>Image Lab</span>
+                      {current === "img" && <span className="text-[10px] text-slate-400">Aktif</span>}
+                    </button>
+                  </div>
+
+                  <div>
+                    <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">Utilitas</p>
+                    <button
+                      className="flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-3 text-left text-slate-700 hover:bg-slate-50"
+                      onClick={() => {
+                        onChange("util");
+                        setMobileOpen(false);
+                      }}
+                    >
+                      <span>Rak Utilitas</span>
+                      {current === "util" && <span className="text-[10px] text-slate-400">Aktif</span>}
+                    </button>
+                  </div>
+
+                  <div className="pt-2">
+                    <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">Kebijakan</p>
+                    <div className="flex gap-2">
+                      <a
+                        href="#/privacy"
+                        className="flex-1 rounded-xl border border-slate-200 px-3 py-3 text-center text-[12px] text-slate-700 hover:bg-slate-50"
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        Privacy Policy
+                      </a>
+                      <a
+                        href="#/terms"
+                        className="flex-1 rounded-xl border border-slate-200 px-3 py-3 text-center text-[12px] text-slate-700 hover:bg-slate-50"
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        Terms
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </header>
   );
 };
 
 export const App: React.FC = () => {
+  const [route, setRoute] = useState<'home' | 'privacy' | 'terms'>(() => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash.startsWith('/privacy')) return 'privacy';
+    if (hash.startsWith('/terms')) return 'terms';
+    return 'home';
+  });
+
+  useEffect(() => {
+    const onHash = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash.startsWith('/privacy')) setRoute('privacy');
+      else if (hash.startsWith('/terms')) setRoute('terms');
+      else setRoute('home');
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
   const [section, setSection] = useState<SectionId>("qr");
 
   return (
@@ -2716,36 +3686,51 @@ export const App: React.FC = () => {
       <AppHeader current={section} onChange={setSection} />
 
       <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 pb-10">
-        <section className="rounded-2xl bg-slate-900 px-5 py-4 text-slate-50 shadow-lg shadow-slate-900/40 md:px-7 md:py-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
-                Studio alat digital
-              </p>
-              <h1 className="mt-1 text-xl font-semibold tracking-tight md:text-2xl">
-                Satu kanvas, banyak alat. Tanpa ribet.
-              </h1>
-              <p className="mt-1.5 max-w-xl text-[12px] text-slate-300">
-                Gamato Piranti merapikan pekerjaan harian: dari QR code, PDF, gambar, sampai dokumen .docx. Sederhana, modern, dan penuh alat yang benar-benar terpakai.
-              </p>
-            </div>
-            <div className="flex flex-col items-end gap-2 text-right text-[11px] text-slate-300">
-              <Badge>Browser Native</Badge>
-              <p>Semua diproses di perangkat Anda.</p>
-            </div>
-          </div>
-        </section>
+        {route !== 'home' ? (
+          route === 'privacy' ? (
+            <PrivacyPage />
+          ) : (
+            <TermsPage />
+          )
+        ) : (
+          <>
+            <section className="rounded-2xl bg-slate-900 px-5 py-4 text-slate-50 shadow-lg shadow-slate-900/40 md:px-7 md:py-5">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
+                    Studio alat digital
+                  </p>
+                  <h1 className="mt-1 text-xl font-semibold tracking-tight md:text-2xl">
+                    Satu kanvas, banyak alat. Tanpa ribet.
+                  </h1>
+                  <p className="mt-1.5 max-w-xl text-[12px] text-slate-300">
+                    Gamato Piranti merapikan pekerjaan harian: dari QR code, PDF, gambar, sampai dokumen .docx. Sederhana, modern, dan penuh alat yang benar-benar terpakai.
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-2 text-right text-[11px] text-slate-300">
+                  <Badge>Browser Native</Badge>
+                  <p>Semua diproses di perangkat Anda.</p>
+                </div>
+              </div>
+            </section>
 
-        {section === "qr" && <QRBarcodeStudio />}
-        {section === "pdf" && <PdfTools />}
-        {section === "doc" && <DocTools />}
-        {section === "img" && <ImageTools />}
-        {section === "util" && <UtilityShelf />}
+            {section === "qr" && <QRBarcodeStudio />}
+            {section === "pdf" && <PdfTools />}
+            {section === "doc" && <DocTools />}
+            {section === "img" && <ImageTools />}
+            {section === "util" && <UtilityShelf />}
+          </>
+        )}
 
         <footer className="mt-4 flex flex-col justify-between gap-3 border-t border-slate-200 pt-4 text-[11px] text-slate-500 md:flex-row md:items-center">
           <p>
             © {new Date().getFullYear()} WUG | Gamato Piranti | Fokus ke utilitas.
           </p>
+          <div className="flex items-center justify-center gap-4 text-center">
+            <a href="#/privacy" className="hover:text-slate-700">Privacy Policy</a>
+            <span className="text-slate-300">•</span>
+            <a href="#/terms" className="hover:text-slate-700">Terms of Service</a>
+          </div>
           <p className="text-slate-400">
             Dibangun dengan ❤ | Ditenagai oleh Vercel.
           </p>
