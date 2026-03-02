@@ -659,7 +659,7 @@ const QRBarcodeStudio: React.FC = () => {
             </div>
             <div className="mt-3 flex justify-between text-[11px] text-slate-400">
               <span>{mode === "qr" ? "PNG 300dpi" : barcodeFormat}</span>
-              <span>Offline first – tanpa tracking</span>
+              <span>◈ tanpa tracking</span>
             </div>
           </div>
 
@@ -2701,7 +2701,7 @@ const AppHeader: React.FC<{
         </nav>
 
         <div className="hidden text-right text-[10px] text-slate-400 sm:block">
-          <p>Offline-first – tanpa login</p>
+          <p>Tanpa Login</p>
         </div>
       </div>
     </header>
@@ -2731,7 +2731,7 @@ export const App: React.FC = () => {
             </div>
             <div className="flex flex-col items-end gap-2 text-right text-[11px] text-slate-300">
               <Badge>Browser Native</Badge>
-              <p>Semua diproses di perangkat Anda. Siap dideploy di hosting statis modern.</p>
+              <p>Semua diproses di perangkat Anda.</p>
             </div>
           </div>
         </section>
@@ -2744,10 +2744,10 @@ export const App: React.FC = () => {
 
         <footer className="mt-4 flex flex-col justify-between gap-3 border-t border-slate-200 pt-4 text-[11px] text-slate-500 md:flex-row md:items-center">
           <p>
-            © {new Date().getFullYear()} Gamato Piranti. Fokus ke utilitas, bukan klaim.
+            © {new Date().getFullYear()} WUG | Gamato Piranti | Fokus ke utilitas.
           </p>
           <p className="text-slate-400">
-            Dibangun dengan React, Vite, dan Tailwind. Siap dideploy ke Netlify, Vercel, dan lainnya.
+            Dibangun dengan ❤ | Ditenagai oleh Vercel.
           </p>
         </footer>
       </main>
