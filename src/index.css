@@ -1,1 +1,20 @@
 @import "tailwindcss";
+
+/* Ensure media elements scale within containers on mobile */
+img, canvas, video, svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* Prevent container clipping and help scrollable areas */
+* { min-width: 0; }
+
+.scroll-area {
+  -webkit-overflow-scrolling: touch;
+}
