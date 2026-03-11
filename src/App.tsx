@@ -3724,7 +3724,7 @@ export const App: React.FC = () => {
 
         <footer className="mt-4 flex flex-col justify-between gap-3 border-t border-slate-200 pt-4 text-[11px] text-slate-500 md:flex-row md:items-center">
           <p>
-            © {new Date().getFullYear()} WUG | Gamato Piranti | Fokus ke utilitas.
+            © {new Date().getFullYear()} WisDev | Gamato Piranti | Fokus ke utilitas.
           </p>
           <div className="flex items-center justify-center gap-4 text-center">
             <a href="#/privacy" className="hover:text-slate-700">Privacy Policy</a>
