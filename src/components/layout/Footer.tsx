@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Zap } from 'lucide-react';
+import { Zap, Code2, Heart } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -16,11 +16,11 @@ export default function Footer() {
               <span className="font-bold text-lg text-slate-900">Gamato Piranti</span>
             </div>
             <p className="text-slate-500 text-sm leading-relaxed">
-              Suite alat digital modern. QR code, PDF, gambar, dokumen — semuanya diproses langsung di browser kamu. Tanpa upload. Tanpa ribet.
+              Suite alat digital modern. QR code, PDF, gambar, dokumen — semuanya diproses langsung di perangkatmu. Aman, cepat, gratis.
             </p>
-            <div className="inline-flex items-center space-x-1.5 bg-green-50 text-green-700 px-3 py-1.5 rounded-full text-xs font-medium">
-              <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-              <span>100% Browser-native · Gratis</span>
+            <div className="inline-flex items-center space-x-1.5 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-xs font-semibold border border-blue-100">
+              <Zap className="w-3 h-3" />
+              <span>100% Native · Gratis</span>
             </div>
           </div>
 
@@ -38,7 +38,7 @@ export default function Footer() {
 
           {/* Company */}
           <div>
-            <h3 className="font-semibold text-slate-900 mb-4 text-sm">Perusahaan</h3>
+            <h3 className="font-semibold text-slate-900 mb-4 text-sm">Informasi</h3>
             <ul className="space-y-2.5 text-sm text-slate-500">
               <li><Link to="/about" className="hover:text-blue-600 transition-colors">About Us</Link></li>
               <li><Link to="/privacy" className="hover:text-blue-600 transition-colors">Privacy Policy</Link></li>
@@ -46,20 +46,25 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Tech info */}
+          {/* Tech */}
           <div>
             <h3 className="font-semibold text-slate-900 mb-4 text-sm">Teknologi</h3>
             <ul className="space-y-2.5 text-sm text-slate-500">
               <li>React + Vite + Tailwind CSS</li>
               <li>pdf-lib · docx · qrcode</li>
               <li>JsBarcode · framer-motion</li>
-              <li className="pt-1 text-xs text-slate-400">Siap deploy ke Vercel, Netlify, Cloudflare Pages</li>
             </ul>
           </div>
         </div>
 
+        {/* Bottom bar */}
         <div className="border-t border-slate-100 mt-10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-slate-400">
-          <p>© {new Date().getFullYear()} Gamato Piranti. Fokus ke utilitas, bukan klaim.</p>
+          <p>© {new Date().getFullYear()} Gamato Piranti. Dibuat dengan <Heart className="w-3 h-3 inline text-red-400" /> untuk produktivitas.</p>
+          <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
+            <Code2 className="w-3.5 h-3.5" />
+            <span>Powered by</span>
+            <span className="text-slate-600 font-bold">WisDev</span>
+          </div>
           <div className="flex items-center gap-4">
             <Link to="/privacy" className="hover:text-slate-600 transition-colors">Privacy Policy</Link>
             <span className="text-slate-200">•</span>

@@ -2,8 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Menu, X, ChevronDown,
-  FileText, Image, QrCode, Sliders,
-  Wrench, Zap, Barcode, Info, Shield, BookOpen,
+  FileText, Image, QrCode, SlidersHorizontal,
+  Zap, Barcode, Info, BookOpen, AlignLeft, Code2,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -38,17 +38,17 @@ const menuGroups = [
   {
     id: 'utilitas' as const,
     title: 'Utilitas',
-    icon: <Wrench className="w-4 h-4" />,
+    icon: <SlidersHorizontal className="w-4 h-4" />,
     items: [
-      { name: 'Rak Utilitas', path: '/utility', icon: <Sliders className="w-4 h-4 text-pink-500" />, desc: 'JSON, Base64, kalkulator, password & lainnya' },
+      { name: 'Rak Utilitas', path: '/utility', icon: <AlignLeft className="w-4 h-4 text-pink-500" />, desc: 'JSON, Base64, kalkulator, password & lainnya' },
     ],
   },
 ];
 
-const pagesLinks = [
-  { name: 'About Us', path: '/about' },
-  { name: 'Privacy Policy', path: '/privacy' },
-  { name: 'Terms of Service', path: '/terms' },
+const policyLinks = [
+  { name: 'About Us',         path: '/about',   icon: <Info className="w-4 h-4 text-slate-400" /> },
+  { name: 'Privacy Policy',   path: '/privacy', icon: <BookOpen className="w-4 h-4 text-slate-400" /> },
+  { name: 'Terms of Service', path: '/terms',   icon: <FileText className="w-4 h-4 text-slate-400" /> },
 ];
 
 export default function Header() {
@@ -57,16 +57,11 @@ export default function Header() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
 
-  useEffect(() => {
-    setMobileOpen(false);
-    setActiveDropdown(null);
-  }, [location]);
+  useEffect(() => { setMobileOpen(false); setActiveDropdown(null); }, [location]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setActiveDropdown(null);
-      }
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setActiveDropdown(null);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -77,31 +72,36 @@ export default function Header() {
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
 
-  const isActive = (items: { path: string }[]) =>
-    items.some(i => location.pathname === i.path);
+  const isActive = (items: { path: string }[]) => items.some(i => location.pathname === i.path);
 
   return (
-    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200">
+    <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-lg border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
 
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 group">
+          <Link to="/" className="flex items-center gap-2.5 group shrink-0">
             <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2 rounded-xl text-white group-hover:shadow-lg group-hover:shadow-blue-500/30 transition-all duration-300">
-              <Zap className="w-5 h-5" />
+              <Zap className="w-4 h-4" />
             </div>
-            <span className="font-bold text-xl tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">
-              Gamato<span className="text-slate-400 font-light">Piranti</span>
-            </span>
+            <div className="leading-tight">
+              <span className="font-bold text-lg tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">
+                Gamato<span className="text-slate-400 font-normal">Piranti</span>
+              </span>
+              <div className="flex items-center gap-1 -mt-0.5">
+                <Code2 className="w-2.5 h-2.5 text-slate-300" />
+                <span className="text-[10px] font-semibold text-slate-300 tracking-wide">WisDev</span>
+              </div>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1" ref={dropdownRef}>
+          <nav className="hidden md:flex items-center gap-1" ref={dropdownRef}>
             {menuGroups.map((group) => (
               <div key={group.id} className="relative">
                 <button
                   onClick={() => setActiveDropdown(activeDropdown === group.id ? null : group.id)}
-                  className={`flex items-center space-x-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                     activeDropdown === group.id || isActive(group.items)
                       ? 'bg-blue-50 text-blue-600'
                       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
@@ -115,18 +115,18 @@ export default function Header() {
                 <AnimatePresence>
                   {activeDropdown === group.id && (
                     <motion.div
-                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                      initial={{ opacity: 0, y: 8, scale: 0.97 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden ring-1 ring-black/5"
+                      exit={{ opacity: 0, y: 8, scale: 0.97 }}
+                      transition={{ duration: 0.13 }}
+                      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden"
                     >
-                      <div className="p-2 space-y-1">
+                      <div className="p-2 space-y-0.5">
                         {group.items.map((item) => (
                           <Link
                             key={item.path}
                             to={item.path}
-                            className="flex items-start space-x-3 p-3 rounded-xl hover:bg-slate-50 transition-colors group/item"
+                            className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors group/item"
                           >
                             <div className="mt-0.5 bg-white p-1.5 rounded-lg shadow-sm ring-1 ring-slate-100 group-hover/item:shadow-md transition-all shrink-0">
                               {item.icon}
@@ -144,15 +144,12 @@ export default function Header() {
               </div>
             ))}
 
-            {/* Separator */}
             <div className="w-px h-5 bg-slate-200 mx-1" />
 
             <Link
               to="/about"
-              className={`flex items-center space-x-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                location.pathname === '/about'
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                location.pathname === '/about' ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
               <Info className="w-4 h-4" />
@@ -163,7 +160,7 @@ export default function Header() {
           {/* Mobile Hamburger */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100 focus:outline-none transition-colors"
+            className="md:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
             aria-label="Toggle menu"
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -183,25 +180,22 @@ export default function Header() {
           >
             <div className="px-4 py-5 space-y-5 max-h-[80vh] overflow-y-auto">
               {menuGroups.map((group) => (
-                <div key={group.id} className="space-y-2">
-                  <h3 className="flex items-center space-x-2 text-xs font-semibold text-slate-400 uppercase tracking-widest">
-                    {group.icon}
-                    <span>{group.title}</span>
+                <div key={group.id} className="space-y-1.5">
+                  <h3 className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest px-1">
+                    {group.icon}<span>{group.title}</span>
                   </h3>
-                  <div className="space-y-1 pl-2 border-l-2 border-slate-100">
+                  <div className="space-y-0.5 pl-2 border-l-2 border-slate-100">
                     {group.items.map((item) => (
                       <Link
                         key={item.path}
                         to={item.path}
-                        className={`flex items-center space-x-3 py-2.5 px-3 rounded-xl transition-colors ${
-                          location.pathname === item.path
-                            ? 'bg-blue-50 text-blue-600'
-                            : 'text-slate-700 hover:bg-slate-50'
+                        className={`flex items-center gap-3 py-2.5 px-3 rounded-xl transition-colors ${
+                          location.pathname === item.path ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-50'
                         }`}
                       >
                         {item.icon}
                         <div>
-                          <div className="text-sm font-medium">{item.name}</div>
+                          <div className="text-sm font-semibold">{item.name}</div>
                           <div className="text-xs text-slate-400">{item.desc}</div>
                         </div>
                       </Link>
@@ -210,19 +204,23 @@ export default function Header() {
                 </div>
               ))}
 
-              <div className="pt-2 border-t border-slate-100 space-y-1">
-                {pagesLinks.map((link) => (
+              <div className="border-t border-slate-100 pt-4 space-y-0.5">
+                {policyLinks.map((link) => (
                   <Link
                     key={link.path}
                     to={link.path}
-                    className="flex items-center space-x-2 px-3 py-2.5 rounded-xl text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-slate-600 hover:bg-slate-50 transition-colors"
                   >
-                    {link.name === 'About Us' && <Info className="w-4 h-4 text-slate-400" />}
-                    {link.name === 'Privacy Policy' && <Shield className="w-4 h-4 text-slate-400" />}
-                    {link.name === 'Terms of Service' && <BookOpen className="w-4 h-4 text-slate-400" />}
-                    <span>{link.name}</span>
+                    {link.icon}<span>{link.name}</span>
                   </Link>
                 ))}
+              </div>
+
+              {/* WisDev tag in mobile */}
+              <div className="flex items-center justify-center gap-1.5 text-xs text-slate-300 pt-1 border-t border-slate-100">
+                <Code2 className="w-3 h-3" />
+                <span>Powered by</span>
+                <span className="text-slate-500 font-bold">WisDev</span>
               </div>
             </div>
           </motion.div>
