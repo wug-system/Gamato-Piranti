@@ -1,23 +1,50 @@
 @import "tailwindcss";
 
+/* ── Media elements ── */
 img, canvas, video, svg {
   max-width: 100%;
   height: auto;
   display: block;
 }
 
+/* ── Base layout ── */
 html, body {
   width: 100%;
   overflow-x: hidden;
 }
 
+/* ── Prevent zero min-width collapse ── */
 * { min-width: 0; }
 
-.scroll-area {
-  -webkit-overflow-scrolling: touch;
+/* ── Mobile: prevent input zoom on iOS (font-size < 16px triggers zoom) ── */
+input[type="text"],
+input[type="email"],
+input[type="url"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+input[type="tel"],
+select,
+textarea {
+  font-size: 16px;
 }
 
-/* Blob animations for hero */
+/* ── Override font-size back to design spec via Tailwind's text-sm on desktop ── */
+@media (min-width: 640px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="url"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"],
+  input[type="tel"],
+  select,
+  textarea {
+    font-size: 0.875rem; /* text-sm = 14px */
+  }
+}
+
+/* ── Blob animations for hero ── */
 @keyframes blob {
   0%   { transform: translate(0, 0) scale(1); }
   33%  { transform: translate(30px, -50px) scale(1.1); }
@@ -27,3 +54,8 @@ html, body {
 .animate-blob { animation: blob 7s infinite; }
 .animation-delay-2000 { animation-delay: 2s; }
 .animation-delay-4000 { animation-delay: 4s; }
+
+/* ── Smooth scrolling ── */
+.scroll-area {
+  -webkit-overflow-scrolling: touch;
+}

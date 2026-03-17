@@ -137,6 +137,14 @@ const Dropzone: React.FC<{
   );
 };
 
+const QR_TEMPLATES: { id: QrTemplate; label: string; icon: React.ReactNode }[] = [
+  { id: "url",   label: "URL",     icon: <Link2  className="w-4 h-4" /> },
+  { id: "text",  label: "Teks",    icon: <Type   className="w-4 h-4" /> },
+  { id: "wifi",  label: "WiFi",    icon: <Wifi   className="w-4 h-4" /> },
+  { id: "email", label: "Email",   icon: <Mail   className="w-4 h-4" /> },
+  { id: "phone", label: "Telepon", icon: <Phone  className="w-4 h-4" /> },
+];
+
 // ─── QR & Barcode Studio ──────────────────────────────────────────────────────
 
 type QrTemplate = "url" | "text" | "wifi" | "email" | "phone";
@@ -269,13 +277,7 @@ const QRBarcodeStudio: React.FC = () => {
     canvas.toBlob(b => { if (b) downloadBlob(b, "gamato-barcode.png"); });
   };
 
-  const TEMPLATES: { id: QrTemplate; label: string; icon: React.ReactNode }[] = [
-    { id: "url",   label: "URL",     icon: <Link2  className="w-4 h-4" /> },
-    { id: "text",  label: "Teks",    icon: <Type   className="w-4 h-4" /> },
-    { id: "wifi",  label: "WiFi",    icon: <Wifi   className="w-4 h-4" /> },
-    { id: "email", label: "Email",   icon: <Mail   className="w-4 h-4" /> },
-    { id: "phone", label: "Telepon", icon: <Phone  className="w-4 h-4" /> },
-  ];
+  // QR_TEMPLATES defined at module level
 
   return (
     <div className="space-y-6">
@@ -302,7 +304,7 @@ const QRBarcodeStudio: React.FC = () => {
               <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
                 <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Template QR</p>
                 <div className="flex flex-wrap gap-2">
-                  {TEMPLATES.map(t => (
+                  {QR_TEMPLATES.map(t => (
                     <button key={t.id} type="button" onClick={() => setQrTemplate(t.id)}
                       className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all",
                         qrTemplate === t.id ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:bg-blue-50")}>
@@ -463,6 +465,18 @@ const QRBarcodeStudio: React.FC = () => {
     </div>
   );
 };
+
+const PDF_MODES: { id: PdfMode; label: string; icon: React.ReactNode; desc: string }[] = [
+  { id: "merge",       label: "Gabung",        icon: <Layers className="w-5 h-5" />,           desc: "Combine multiple PDFs" },
+  { id: "split",       label: "Pecah",         icon: <FileOutput className="w-5 h-5" />,        desc: "Tiap halaman jadi file" },
+  { id: "compress",    label: "Kompres",       icon: <FileDown className="w-5 h-5" />,          desc: "Kurangi ukuran file" },
+  { id: "extract",     label: "Ekstrak",       icon: <FilePlus className="w-5 h-5" />,          desc: "Ambil halaman tertentu" },
+  { id: "delete",      label: "Hapus Halaman", icon: <FileX className="w-5 h-5" />,             desc: "Buang halaman" },
+  { id: "rotate",      label: "Putar",         icon: <RotateCw className="w-5 h-5" />,          desc: "Rotasi halaman" },
+  { id: "organize",    label: "Atur Ulang",    icon: <SlidersHorizontal className="w-5 h-5" />, desc: "Susun urutan halaman" },
+  { id: "imagesToPdf", label: "Gambar → PDF",  icon: <FileImage className="w-5 h-5" />,         desc: "JPG/PNG ke PDF" },
+  { id: "textToPdf",   label: "Teks → PDF",    icon: <AlignLeft className="w-5 h-5" />,         desc: "Teks polos ke PDF" },
+];
 
 // ─── PDF Lab ──────────────────────────────────────────────────────────────────
 
@@ -629,17 +643,7 @@ const PdfTools: React.FC = () => {
     finally { setIsWorking(false); }
   };
 
-  const PDF_MODES: { id: PdfMode; label: string; icon: React.ReactNode; desc: string }[] = [
-    { id: "merge",       label: "Gabung",        icon: <Layers className="w-5 h-5" />,      desc: "Combine multiple PDFs" },
-    { id: "split",       label: "Pecah",         icon: <FileOutput className="w-5 h-5" />,   desc: "Tiap halaman jadi file" },
-    { id: "compress",    label: "Kompres",       icon: <FileDown className="w-5 h-5" />,     desc: "Kurangi ukuran file" },
-    { id: "extract",     label: "Ekstrak",       icon: <FilePlus className="w-5 h-5" />,     desc: "Ambil halaman tertentu" },
-    { id: "delete",      label: "Hapus Halaman", icon: <FileX className="w-5 h-5" />,        desc: "Buang halaman" },
-    { id: "rotate",      label: "Putar",         icon: <RotateCw className="w-5 h-5" />,     desc: "Rotasi halaman" },
-    { id: "organize",    label: "Atur Ulang",    icon: <SlidersHorizontal className="w-5 h-5" />, desc: "Susun urutan halaman" },
-    { id: "imagesToPdf", label: "Gambar → PDF",  icon: <FileImage className="w-5 h-5" />,    desc: "JPG/PNG ke PDF" },
-    { id: "textToPdf",   label: "Teks → PDF",    icon: <AlignLeft className="w-5 h-5" />,    desc: "Teks polos ke PDF" },
-  ];
+  // PDF_MODES defined at module level
 
   return (
     <div className="space-y-6">
@@ -992,6 +996,13 @@ const DocTools: React.FC = () => {
   );
 };
 
+const IMG_MODES: { id: string; label: string; icon: React.ReactNode }[] = [
+  { id: "compress", label: "Kompres",         icon: <FileDown      className="w-5 h-5" /> },
+  { id: "resize",   label: "Ubah Ukuran",     icon: <ArrowLeftRight className="w-5 h-5" /> },
+  { id: "convert",  label: "Konversi Format", icon: <Wand2         className="w-5 h-5" /> },
+  { id: "rotate",   label: "Putar",           icon: <RotateCw      className="w-5 h-5" /> },
+];
+
 // ─── Image Lab ────────────────────────────────────────────────────────────────
 
 type ImageMode = "compress" | "resize" | "convert" | "rotate";
@@ -1061,12 +1072,7 @@ const ImageTools: React.FC = () => {
     finally { setIsWorking(false); }
   };
 
-  const IMG_MODES: { id: ImageMode; label: string; icon: React.ReactNode }[] = [
-    { id: "compress", label: "Kompres", icon: <FileDown className="w-5 h-5" /> },
-    { id: "resize", label: "Ubah Ukuran", icon: <ArrowLeftRight className="w-5 h-5" /> },
-    { id: "convert", label: "Konversi Format", icon: <Wand2 className="w-5 h-5" /> },
-    { id: "rotate", label: "Putar", icon: <RotateCw className="w-5 h-5" /> },
-  ];
+  // IMG_MODES defined at module level
 
   return (
     <div className="space-y-6">
@@ -1168,6 +1174,31 @@ const ImageTools: React.FC = () => {
     </div>
   );
 };
+
+const UTILITY_TABS: { id: string; label: string; icon: React.ReactNode }[] = [
+  { id: "json",     label: "JSON & Base64",  icon: <Code2         className="w-3.5 h-3.5" /> },
+  { id: "bulk",     label: "Bulk Teks",      icon: <ListOrdered   className="w-3.5 h-3.5" /> },
+  { id: "media",    label: "Link Media",     icon: <Radio         className="w-3.5 h-3.5" /> },
+  { id: "alias",    label: "Alias Email",    icon: <Mail          className="w-3.5 h-3.5" /> },
+  { id: "tax",      label: "Kalk. Pajak",    icon: <Calculator    className="w-3.5 h-3.5" /> },
+  { id: "interest", label: "Kalk. Bunga",    icon: <TrendingUp    className="w-3.5 h-3.5" /> },
+  { id: "stats",    label: "Statistik",      icon: <BarChart3     className="w-3.5 h-3.5" /> },
+  { id: "wa",       label: "WA Link",        icon: <MessageCircle className="w-3.5 h-3.5" /> },
+  { id: "pass",     label: "Password & Token", icon: <KeyRound    className="w-3.5 h-3.5" /> },
+  { id: "meta",     label: "Hapus Metadata", icon: <Eraser        className="w-3.5 h-3.5" /> },
+];
+
+// ─── Utility Shelf helpers ────────────────────────────────────────────────────
+
+const PanelCard: React.FC<{ title: string; subtitle?: string; children: React.ReactNode }> = ({ title, subtitle, children }) => (
+  <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+    <div>
+      <h3 className="font-bold text-slate-900 text-base">{title}</h3>
+      {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+    </div>
+    {children}
+  </div>
+);
 
 // ─── Utility Shelf ────────────────────────────────────────────────────────────
 
@@ -1369,21 +1400,11 @@ const UtilityShelf: React.FC = () => {
     { id: "meta",     label: "Hapus Metadata",     icon: <Eraser className="w-3.5 h-3.5" /> },
   ];
 
-  const PanelCard: React.FC<{ title: string; subtitle?: string; children: React.ReactNode }> = ({ title, subtitle, children }) => (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
-      <div>
-        <h3 className="font-bold text-slate-900 text-base">{title}</h3>
-        {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
-      </div>
-      {children}
-    </div>
-  );
-
   return (
     <div className="space-y-5">
       {/* Tab selector */}
       <div className="flex flex-wrap gap-2">
-        {TABS.map(t => (
+        {UTILITY_UTILITY_TABS.map(t => (
           <button key={t.id} type="button" onClick={() => setTab(t.id)}
             className={cn("flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold border-2 transition-all",
               tab === t.id ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50")}>
