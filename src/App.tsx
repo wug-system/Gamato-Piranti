@@ -1,172 +1,137 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Layout from "./components/layout/Layout";
-import Home from "./pages/Home";
-import About from "./pages/About";
 import QRCode from "qrcode";
 import JsBarcode from "jsbarcode";
 import { PDFDocument, StandardFonts, rgb, degrees } from "pdf-lib";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 import { cn } from "./utils/cn";
 import { sanitizeText, sanitizeUrl, sanitizeFileName, sanitizeNumberString, sanitizePhone } from "./utils/sanitize";
+import Layout from "./components/layout/Layout";
+import Home from "./pages/Home";
+import About from "./pages/About";
 
-// ---------- Shared UI primitives ----------
+// ─── Shared primitives ───────────────────────────────────────────────────────
 
-const Card: React.FC<{
-  title: string;
-  description?: string;
-  className?: string;
-  children: React.ReactNode;
-}> = ({ title, description, className, children }) => (
-  <section
-    className={cn(
-      "rounded-2xl border border-slate-200 bg-white p-6 md:p-8 shadow-sm",
-      "transition-shadow hover:shadow-md",
-      className
-    )}
-  >
-    <header className="mb-6 pb-5 border-b border-slate-100 flex items-start justify-between gap-3">
-      <div>
-        <h2 className="text-lg font-bold tracking-tight text-slate-900">
-          {title}
-        </h2>
-        {description && (
-          <p className="mt-1 text-sm text-slate-500">{description}</p>
-        )}
-      </div>
-      <span className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-green-400" title="Alat aktif" />
-    </header>
-    <div>{children}</div>
-  </section>
+const Label: React.FC<{ children: React.ReactNode; htmlFor?: string }> = ({ children, htmlFor }) => (
+  <label htmlFor={htmlFor} className="block text-sm font-semibold text-slate-700 mb-1.5">{children}</label>
 );
 
-const Label: React.FC<{ htmlFor?: string; children: React.ReactNode }> = ({
-  htmlFor,
-  children,
-}) => (
-  <label
-    htmlFor={htmlFor}
-    className="text-xs font-semibold tracking-wide text-slate-700"
-  >
-    {children}
-  </label>
-);
-
-const Input: React.FC<
-  React.InputHTMLAttributes<HTMLInputElement> & { label?: string }
-> = ({ label, className, ...props }) => (
-  <div className="space-y-1.5">
-    {label && <Label htmlFor={props.id}>{label}</Label>}
-    <input
-      {...props}
-      className={cn(
-        "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm",
-        "focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10",
-        "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
-        "placeholder:text-slate-400",
-        className
-      )}
-    />
+const Input: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { label?: string }> = ({ label, className, id, ...props }) => (
+  <div>
+    {label && <Label htmlFor={id}>{label}</Label>}
+    <input id={id} {...props} className={cn("w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10 disabled:bg-slate-50 disabled:text-slate-400", className)} />
   </div>
 );
 
-const Select: React.FC<
-  React.SelectHTMLAttributes<HTMLSelectElement> & { label?: string }
-> = ({ label, className, children, ...props }) => (
-  <div className="space-y-1.5">
-    {label && <Label htmlFor={props.id}>{label}</Label>}
-    <select
-      {...props}
-      className={cn(
-        "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm",
-        "focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10",
-        className
-      )}
-    >
+const Select: React.FC<React.SelectHTMLAttributes<HTMLSelectElement> & { label?: string }> = ({ label, className, id, children, ...props }) => (
+  <div>
+    {label && <Label htmlFor={id}>{label}</Label>}
+    <select id={id} {...props} className={cn("w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10", className)}>
       {children}
     </select>
   </div>
 );
 
-const Textarea: React.FC<
-  React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string }
-> = ({ label, className, ...props }) => (
-  <div className="space-y-1.5">
-    {label && <Label htmlFor={props.id}>{label}</Label>}
-    <textarea
-      {...props}
-      className={cn(
-        "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm",
-        "focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10",
-        "disabled:cursor-not-allowed disabled:bg-slate-50",
-        "placeholder:text-slate-400",
-        className
-      )}
-    />
+const Textarea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string }> = ({ label, className, id, ...props }) => (
+  <div>
+    {label && <Label htmlFor={id}>{label}</Label>}
+    <textarea id={id} {...props} className={cn("w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10 resize-none", className)} />
   </div>
 );
 
-const Button: React.FC<
-  React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "solid" | "ghost" }
-> = ({ variant = "solid", className, children, ...props }) => (
-  <button
-    {...props}
-    className={cn(
-      "inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold",
-      "transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40",
-      variant === "solid"
-        ? "bg-slate-900 text-white shadow-sm hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400"
-        : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 disabled:text-slate-300 disabled:border-slate-100",
-      className
-    )}
-  >
-    {children}
-  </button>
+const Btn: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "danger" | "ghost" }> = ({ variant = "primary", className, children, ...props }) => (
+  <button {...props} className={cn(
+    "inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:pointer-events-none",
+    variant === "primary" && "bg-slate-900 text-white shadow-sm hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400",
+    variant === "secondary" && "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 disabled:text-slate-300",
+    variant === "danger" && "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100",
+    variant === "ghost" && "text-slate-500 hover:text-slate-700 hover:bg-slate-100",
+    className
+  )}>{children}</button>
 );
 
-const Badge: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.16em] text-slate-600">
+const SectionBadge: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-700 bg-green-50 px-3 py-1 rounded-full border border-green-200">
+    <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
     {children}
   </span>
 );
 
-// ---------- File helpers ----------
+// ─── File helpers ─────────────────────────────────────────────────────────────
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
+  a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
 }
 
 async function fileToArrayBuffer(file: File): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as ArrayBuffer);
-    reader.onerror = reject;
-    reader.readAsArrayBuffer(file);
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as ArrayBuffer);
+    r.onerror = reject;
+    r.readAsArrayBuffer(file);
   });
 }
 
 async function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = reject;
+    r.readAsDataURL(file);
   });
 }
 
-// ---------- QR & Barcode Studio ----------
+// ─── Dropzone component ───────────────────────────────────────────────────────
+
+const Dropzone: React.FC<{
+  onFiles: (files: File[]) => void;
+  accept?: string;
+  multiple?: boolean;
+  label?: string;
+  sublabel?: string;
+  icon?: string;
+  isDragging?: boolean;
+  setIsDragging?: (v: boolean) => void;
+}> = ({ onFiles, accept, multiple = true, label = "Drop files here", sublabel = "or click to browse", icon = "📂", isDragging, setIsDragging }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging?.(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length) onFiles(files);
+  };
+  return (
+    <div
+      onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => { e.preventDefault(); setIsDragging?.(true); }}
+      onDragLeave={() => setIsDragging?.(false)}
+      onDrop={handleDrop}
+      className={cn(
+        "relative border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all duration-200 group",
+        isDragging ? "border-blue-500 bg-blue-50 scale-[1.01]" : "border-slate-300 hover:border-blue-400 hover:bg-blue-50/40"
+      )}
+    >
+      <input ref={inputRef} type="file" className="hidden" accept={accept} multiple={multiple} onChange={(e) => { if (e.target.files) onFiles(Array.from(e.target.files)); }} />
+      <div className="flex flex-col items-center gap-3">
+        <div className={cn("p-4 rounded-2xl text-3xl transition-all", isDragging ? "bg-blue-100" : "bg-slate-100 group-hover:bg-blue-100")}>{icon}</div>
+        <div>
+          <p className="text-base font-semibold text-slate-800">{label}</p>
+          <p className="text-sm text-slate-400 mt-0.5">{sublabel}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── QR & Barcode Studio ──────────────────────────────────────────────────────
 
 type QrTemplate = "url" | "text" | "wifi" | "email" | "phone";
 
 const QRBarcodeStudio: React.FC = () => {
   const [mode, setMode] = useState<"qr" | "barcode">("qr");
-
-  // QR template states
   const [qrTemplate, setQrTemplate] = useState<QrTemplate>("url");
   const [qrUrl, setQrUrl] = useState("https://gamato-piranti.local");
   const [qrText, setQrText] = useState("");
@@ -178,45 +143,30 @@ const QRBarcodeStudio: React.FC = () => {
   const [qrEmailSubject, setQrEmailSubject] = useState("");
   const [qrEmailBody, setQrEmailBody] = useState("");
   const [qrPhone, setQrPhone] = useState("");
-
-  // Barcode states
   const [barcodeContent, setBarcodeContent] = useState("123456789012");
   const [barcodeFormat, setBarcodeFormat] = useState<string>("CODE128");
   const [barcodeHeight, setBarcodeHeight] = useState(80);
-
-  // Shared visuals
   const [size, setSize] = useState(280);
   const [fgColor, setFgColor] = useState("#020617");
   const [bgColor, setBgColor] = useState("#ffffff");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [qrUrlImage, setQrUrlImage] = useState<string | null>(null);
   const barcodeCanvasRef = useRef<HTMLCanvasElement | null>(null);
-
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const logoPreview = useMemo(() => {
-    if (!logoFile) return null;
-    return URL.createObjectURL(logoFile);
-  }, [logoFile]);
+  const logoPreview = useMemo(() => logoFile ? URL.createObjectURL(logoFile) : null, [logoFile]);
 
   const buildQrPayload = (): string => {
     switch (qrTemplate) {
-      case "url": {
-        const s = sanitizeUrl(qrUrl);
-        return s;
-      }
-      case "text": {
-        return sanitizeText(qrText);
-      }
+      case "url": return sanitizeUrl(qrUrl);
+      case "text": return sanitizeText(qrText);
       case "wifi": {
         const ssid = sanitizeText(qrWifiSsid);
         if (!ssid) return "";
-        const enc = qrWifiEnc === "nopass" ? "nopass" : qrWifiEnc;
-        const hidden = qrWifiHidden ? "true" : "false";
         const pass = sanitizeText(qrWifiPass);
-        const passPart = enc === "nopass" ? "" : `P:${pass};`;
-        return `WIFI:T:${enc};S:${ssid};${passPart}H:${hidden};;`;
+        const passPart = qrWifiEnc === "nopass" ? "" : `P:${pass};`;
+        return `WIFI:T:${qrWifiEnc};S:${ssid};${passPart}H:${qrWifiHidden ? "true" : "false"};;`;
       }
       case "email": {
         const to = sanitizeText(qrEmailTo).replace(/\s+/g, "");
@@ -226,16 +176,13 @@ const QRBarcodeStudio: React.FC = () => {
         const body = sanitizeText(qrEmailBody);
         if (subj) params.push(`subject=${encodeURIComponent(subj)}`);
         if (body) params.push(`body=${encodeURIComponent(body)}`);
-        const query = params.length ? `?${params.join("&")}` : "";
-        return `mailto:${to}${query}`;
+        return `mailto:${to}${params.length ? `?${params.join("&")}` : ""}`;
       }
       case "phone": {
         const phone = qrPhone.replace(/[^\d+]/g, "").replace(/(?!^)[+]/g, "");
-        if (!phone) return "";
-        return `tel:${phone}`;
+        return phone ? `tel:${phone}` : "";
       }
-      default:
-        return "";
+      default: return "";
     }
   };
 
@@ -245,624 +192,344 @@ const QRBarcodeStudio: React.FC = () => {
     try {
       if (mode === "qr") {
         const payload = buildQrPayload();
-        if (!payload.trim()) {
-          setError("Isi QR belum lengkap.");
-          return;
-        }
-
+        if (!payload.trim()) { setError("Isi QR belum lengkap."); return; }
         const baseCanvas = document.createElement("canvas");
-        await QRCode.toCanvas(baseCanvas, payload, {
-          margin: 2,
-          width: size,
-          color: {
-            dark: fgColor,
-            light: bgColor,
-          },
-        });
-
+        await QRCode.toCanvas(baseCanvas, payload, { margin: 2, width: size, color: { dark: fgColor, light: bgColor } });
         if (!logoFile) {
           setQrUrlImage(baseCanvas.toDataURL("image/png"));
         } else {
-          const ctx = baseCanvas.getContext("2d");
-          if (!ctx) throw new Error("Canvas context not available");
+          const ctx = baseCanvas.getContext("2d")!;
           const logoUrl = await fileToDataUrl(logoFile);
           const img = new Image();
           img.src = logoUrl;
-          await new Promise<void>((resolve, reject) => {
-            img.onload = () => resolve();
-            img.onerror = () => reject(new Error("Logo load failed"));
-          });
-          const logoSize = size * 0.25;
-          const x = (size - logoSize) / 2;
-          const y = (size - logoSize) / 2;
-          ctx.save();
-          ctx.beginPath();
-          const radius = logoSize * 0.22;
-          ctx.moveTo(x + radius, y);
-          ctx.lineTo(x + logoSize - radius, y);
-          ctx.quadraticCurveTo(x + logoSize, y, x + logoSize, y + radius);
-          ctx.lineTo(x + logoSize, y + logoSize - radius);
-          ctx.quadraticCurveTo(
-            x + logoSize,
-            y + logoSize,
-            x + logoSize - radius,
-            y + logoSize
-          );
-          ctx.lineTo(x + radius, y + logoSize);
-          ctx.quadraticCurveTo(x, y + logoSize, x, y + logoSize - radius);
-          ctx.lineTo(x, y + radius);
-          ctx.quadraticCurveTo(x, y, x + radius, y);
-          ctx.closePath();
-          ctx.fillStyle = "rgba(255,255,255,0.98)";
-          ctx.fill();
-          ctx.clip();
-          ctx.drawImage(img, x, y, logoSize, logoSize);
-          ctx.restore();
+          await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = () => reject(); });
+          const ls = size * 0.25, x = (size - ls) / 2, y = (size - ls) / 2, r = ls * 0.22;
+          ctx.save(); ctx.beginPath();
+          ctx.moveTo(x + r, y); ctx.lineTo(x + ls - r, y); ctx.quadraticCurveTo(x + ls, y, x + ls, y + r);
+          ctx.lineTo(x + ls, y + ls - r); ctx.quadraticCurveTo(x + ls, y + ls, x + ls - r, y + ls);
+          ctx.lineTo(x + r, y + ls); ctx.quadraticCurveTo(x, y + ls, x, y + ls - r);
+          ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+          ctx.fillStyle = "rgba(255,255,255,0.98)"; ctx.fill(); ctx.clip();
+          ctx.drawImage(img, x, y, ls, ls); ctx.restore();
           setQrUrlImage(baseCanvas.toDataURL("image/png"));
         }
       } else {
         const canvas = barcodeCanvasRef.current;
         if (!canvas) return;
         let value = barcodeContent.trim();
-        if (!value) {
-          setError("Isi barcode belum diisi.");
-          return;
-        }
-
+        if (!value) { setError("Isi barcode belum diisi."); return; }
         const numericFormats = ["EAN13", "EAN8", "UPC", "ITF14"];
         if (numericFormats.includes(barcodeFormat)) {
           const digits = value.replace(/\D/g, "");
-          if (!digits) {
-            setError("Format barcode ini hanya mendukung angka.");
-            return;
-          }
+          if (!digits) { setError("Format ini hanya mendukung angka."); return; }
           const len = digits.length;
-          if (barcodeFormat === "EAN13" && len !== 12 && len !== 13) {
-            setError("EAN-13 memerlukan 12 atau 13 digit angka.");
-            return;
-          }
-          if (barcodeFormat === "EAN8" && len !== 7 && len !== 8) {
-            setError("EAN-8 memerlukan 7 atau 8 digit angka.");
-            return;
-          }
-          if (barcodeFormat === "UPC" && len !== 11 && len !== 12) {
-            setError("UPC memerlukan 11 atau 12 digit angka.");
-            return;
-          }
-          if (barcodeFormat === "ITF14" && len !== 13 && len !== 14) {
-            setError("ITF-14 memerlukan 13 atau 14 digit angka.");
-            return;
-          }
+          if (barcodeFormat === "EAN13" && len !== 12 && len !== 13) { setError("EAN-13: butuh 12 atau 13 digit."); return; }
+          if (barcodeFormat === "EAN8" && len !== 7 && len !== 8) { setError("EAN-8: butuh 7 atau 8 digit."); return; }
+          if (barcodeFormat === "UPC" && len !== 11 && len !== 12) { setError("UPC: butuh 11 atau 12 digit."); return; }
+          if (barcodeFormat === "ITF14" && len !== 13 && len !== 14) { setError("ITF-14: butuh 13 atau 14 digit."); return; }
           value = digits;
         }
-
-        JsBarcode(canvas, value, {
-          format: barcodeFormat as any,
-          lineColor: fgColor,
-          background: bgColor,
-          width: 2,
-          height: barcodeHeight,
-          displayValue: true,
-          margin: 10,
-        });
+        JsBarcode(canvas, value, { format: barcodeFormat as any, lineColor: fgColor, background: bgColor, width: 2, height: barcodeHeight, displayValue: true, margin: 10 });
       }
     } catch (err: any) {
-      console.error(err);
       setError(err?.message || "Gagal membuat kode");
     } finally {
       setIsGenerating(false);
     }
   };
 
+  // Auto-generate QR on change
+  useEffect(() => {
+    if (mode !== "qr") return;
+    const payload = buildQrPayload();
+    if (!payload.trim()) return;
+    const timer = setTimeout(() => generate(), 300);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, qrTemplate, qrUrl, qrText, qrWifiSsid, qrWifiPass, qrWifiEnc, qrWifiHidden, qrEmailTo, qrEmailSubject, qrEmailBody, qrPhone, size, fgColor, bgColor, logoFile]);
+
   const downloadQR = () => {
     if (!qrUrlImage) return;
-    fetch(qrUrlImage)
-      .then((r) => r.blob())
-      .then((blob) => downloadBlob(blob, "gamato-qr.png"));
+    fetch(qrUrlImage).then(r => r.blob()).then(b => downloadBlob(b, "gamato-qr.png"));
   };
-
   const downloadBarcode = () => {
     const canvas = barcodeCanvasRef.current;
     if (!canvas) return;
-    canvas.toBlob((blob) => {
-      if (blob) downloadBlob(blob, "gamato-barcode.png");
-    });
+    canvas.toBlob(b => { if (b) downloadBlob(b, "gamato-barcode.png"); });
   };
 
-  const canGenerate = mode === "qr" ? !!buildQrPayload().trim() : !!barcodeContent.trim();
+  const TEMPLATES: { id: QrTemplate; label: string; emoji: string }[] = [
+    { id: "url", label: "URL", emoji: "🔗" },
+    { id: "text", label: "Teks", emoji: "📝" },
+    { id: "wifi", label: "WiFi", emoji: "📶" },
+    { id: "email", label: "Email", emoji: "✉️" },
+    { id: "phone", label: "Telepon", emoji: "📞" },
+  ];
 
   return (
-    <Card
-      title="Kode Studio: QR & Barcode"
-      description="Buat kode yang rapi untuk apa saja – link, WiFi, produk, tiket, dan lainnya."
-    >
-      <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-[11px] text-slate-500">
-            <Badge>Realtime</Badge>
-            <span>Tanpa upload ke server, semua diproses di browser.</span>
-          </div>
+    <div className="space-y-6">
+      {/* Mode toggle */}
+      <div className="grid grid-cols-2 gap-3">
+        {[{ id: "qr", label: "QR Code", sub: "5 template • logo • warna" }, { id: "barcode", label: "Barcode", sub: "6 format • validasi otomatis" }].map(m => (
+          <button key={m.id} type="button" onClick={() => setMode(m.id as "qr" | "barcode")}
+            className={cn("rounded-2xl border-2 p-4 text-left transition-all", mode === m.id ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:border-slate-300")}>
+            <div className={cn("font-bold text-base", mode === m.id ? "text-blue-700" : "text-slate-900")}>{m.label}</div>
+            <div className="text-xs text-slate-500 mt-0.5">{m.sub}</div>
+          </button>
+        ))}
+      </div>
 
-          <div className="flex gap-2 rounded-xl bg-slate-50 p-1 text-xs font-medium text-slate-600">
-            <button
-              type="button"
-              onClick={() => setMode("qr")}
-              className={cn(
-                "flex-1 rounded-lg px-3 py-1.5 transition",
-                mode === "qr" ? "bg-white shadow-sm" : "hover:bg-slate-100"
-              )}
-            >
-              QR Code
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("barcode")}
-              className={cn(
-                "flex-1 rounded-lg px-3 py-1.5 transition",
-                mode === "barcode" ? "bg-white shadow-sm" : "hover:bg-slate-100"
-              )}
-            >
-              Barcode
-            </button>
-          </div>
-
-          {mode === "qr" ? (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-50/80 p-2 text-[11px] font-medium text-slate-600">
-                <span className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                  Template QR
-                </span>
-                {(
-                  [
-                    ["url", "Link"],
-                    ["text", "Teks bebas"],
-                    ["wifi", "WiFi"],
-                    ["email", "Email"],
-                    ["phone", "Telepon"],
-                  ] as [QrTemplate, string][]
-                ).map(([id, label]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setQrTemplate(id)}
-                    className={cn(
-                      "rounded-full px-2.5 py-1 transition",
-                      qrTemplate === id
-                        ? "bg-slate-900 text-slate-50 shadow-sm"
-                        : "bg-white text-slate-700 hover:bg-slate-100"
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              {qrTemplate === "url" && (
-                <Input
-                  label="Link / URL"
-                  type="url"
-                  value={qrUrl}
-                  onChange={(e) => setQrUrl(e.target.value)}
-                  placeholder="https://contoh.com/halaman-anda"
-                />
-              )}
-
-              {qrTemplate === "text" && (
-                <Textarea
-                  label="Teks bebas"
-                  rows={4}
-                  value={qrText}
-                  onChange={(e) => setQrText(sanitizeText(e.target.value))}
-                  placeholder="Tulis pesan, catatan, atau instruksi yang akan muncul saat discan."
-                />
-              )}
-
-              {qrTemplate === "wifi" && (
-                <div className="grid gap-3 rounded-xl bg-slate-50/70 p-3 text-xs md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Input
-                      label="Nama WiFi (SSID)"
-                      value={qrWifiSsid}
-                      onChange={(e) => setQrWifiSsid(sanitizeText(e.target.value))}
-                      placeholder="Nama jaringan WiFi"
-                    />
-                    <Select
-                      label="Keamanan"
-                      value={qrWifiEnc}
-                      onChange={(e) =>
-                        setQrWifiEnc((e.target.value as "WPA" | "WEP" | "nopass") || "WPA")
-                      }
-                    >
-                      <option value="WPA">WPA / WPA2</option>
-                      <option value="WEP">WEP</option>
-                      <option value="nopass">Tanpa password</option>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Input
-                      label="Password WiFi"
-                      type="text"
-                      disabled={qrWifiEnc === "nopass"}
-                      value={qrWifiPass}
-                      onChange={(e) => setQrWifiPass(sanitizeText(e.target.value))}
-                      placeholder={
-                        qrWifiEnc === "nopass"
-                          ? "Tidak diperlukan"
-                          : "Masukkan password"
-                      }
-                    />
-                    <div className="mt-2 flex items-center gap-2 pt-1">
-                      <input
-                        id="wifi-hidden"
-                        type="checkbox"
-                        checked={qrWifiHidden}
-                        onChange={(e) => setQrWifiHidden(e.target.checked)}
-                        className="h-3.5 w-3.5 rounded border-slate-300 text-slate-900 focus:ring-slate-900/30"
-                      />
-                      <label
-                        htmlFor="wifi-hidden"
-                        className="text-[11px] text-slate-600"
-                      >
-                        Jaringan disembunyikan (hidden SSID)
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {qrTemplate === "email" && (
-                <div className="space-y-2 text-xs">
-                  <Input
-                    label="Kepada (email)"
-                    type="email"
-                    value={qrEmailTo}
-                    onChange={(e) => setQrEmailTo(sanitizeText(e.target.value))}
-                    placeholder="nama@perusahaan.com"
-                  />
-                  <Input
-                    label="Subjek"
-                    value={qrEmailSubject}
-                    onChange={(e) => setQrEmailSubject(sanitizeText(e.target.value))}
-                    placeholder="Subjek email"
-                  />
-                  <Textarea
-                    label="Isi email"
-                    rows={3}
-                    value={qrEmailBody}
-                    onChange={(e) => setQrEmailBody(sanitizeText(e.target.value))}
-                    placeholder="Teks email yang akan diisi otomatis."
-                  />
-                </div>
-              )}
-
-              {qrTemplate === "phone" && (
-                <Input
-                  label="Nomor telepon"
-                  value={qrPhone}
-                  onChange={(e) => setQrPhone(sanitizeText(e.target.value))}
-                  placeholder="Contoh: +62812..."
-                />
-              )}
-            </div>
-          ) : (
-            <Textarea
-              label="Isi Barcode"
-              rows={4}
-              value={barcodeContent}
-              onChange={(e) => setBarcodeContent(sanitizeText(e.target.value))}
-              placeholder="Kode produk, SKU, atau nomor lain yang akan dijadikan barcode."
-            />
-          )}
-
-          <div className="grid grid-cols-2 gap-4 text-xs">
-            <Input
-              label="Ukuran QR"
-              type="number"
-              min={128}
-              max={640}
-              value={size}
-              onChange={(e) => setSize(Number(e.target.value) || 0)}
-            />
-            <Input
-              label="Tinggi barcode"
-              type="number"
-              min={40}
-              max={200}
-              value={barcodeHeight}
-              onChange={(e) => setBarcodeHeight(Number(e.target.value) || 0)}
-            />
-            <Input
-              label="Warna utama"
-              type="color"
-              value={fgColor}
-              onChange={(e) => setFgColor(e.target.value)}
-            />
-            <Input
-              label="Warna latar"
-              type="color"
-              value={bgColor}
-              onChange={(e) => setBgColor(e.target.value)}
-            />
-          </div>
-
+      <div className="grid lg:grid-cols-[1fr_400px] gap-8 items-start">
+        {/* LEFT: Controls */}
+        <div className="space-y-5">
           {mode === "qr" && (
-            <div className="grid gap-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 p-3 text-xs text-slate-600 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-              <div className="space-y-2">
-                <Label>Logo tengah (opsional)</Label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) =>
-                    setLogoFile(e.target.files ? e.target.files[0] : null)
-                  }
-                  className="block w-full text-[11px] text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-slate-50 hover:file:bg-slate-800"
-                />
-                <p className="text-[11px] text-slate-500">
-                  PNG/JPG, akan otomatis dipotong dengan sudut membulat.
-                </p>
-              </div>
-              {logoPreview && (
-                <div className="flex items-center justify-center">
-                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                    <img
-                      src={logoPreview}
-                      alt="Logo preview"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
+            <>
+              {/* Template selector */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Template QR</p>
+                <div className="flex flex-wrap gap-2">
+                  {TEMPLATES.map(t => (
+                    <button key={t.id} type="button" onClick={() => setQrTemplate(t.id)}
+                      className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all",
+                        qrTemplate === t.id ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:bg-blue-50")}>
+                      <span>{t.emoji}</span><span>{t.label}</span>
+                    </button>
+                  ))}
                 </div>
-              )}
-            </div>
+              </div>
+
+              {/* Template form */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+                {qrTemplate === "url" && <Input label="URL / Link" value={qrUrl} onChange={e => setQrUrl(sanitizeUrl(e.target.value))} placeholder="https://example.com" type="url" />}
+                {qrTemplate === "text" && <Textarea label="Teks Bebas" rows={5} value={qrText} onChange={e => setQrText(sanitizeText(e.target.value))} placeholder="Ketik pesan, catatan, atau instruksi…" />}
+                {qrTemplate === "wifi" && (
+                  <div className="space-y-3">
+                    <Input label="Nama Jaringan (SSID)" value={qrWifiSsid} onChange={e => setQrWifiSsid(sanitizeText(e.target.value))} placeholder="Nama WiFi" />
+                    <div className="grid grid-cols-2 gap-3">
+                      <Select label="Enkripsi" value={qrWifiEnc} onChange={e => setQrWifiEnc(e.target.value as any)}>
+                        <option value="WPA">WPA / WPA2</option>
+                        <option value="WEP">WEP</option>
+                        <option value="nopass">Tanpa password</option>
+                      </Select>
+                      <Input label="Password" type="password" disabled={qrWifiEnc === "nopass"} value={qrWifiPass} onChange={e => setQrWifiPass(sanitizeText(e.target.value))} placeholder={qrWifiEnc === "nopass" ? "—" : "Password WiFi"} />
+                    </div>
+                    <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+                      <input type="checkbox" checked={qrWifiHidden} onChange={e => setQrWifiHidden(e.target.checked)} className="rounded border-slate-300 accent-blue-600" />
+                      Jaringan tersembunyi (hidden SSID)
+                    </label>
+                  </div>
+                )}
+                {qrTemplate === "email" && (
+                  <div className="space-y-3">
+                    <Input label="Kepada (email)" type="email" value={qrEmailTo} onChange={e => setQrEmailTo(sanitizeText(e.target.value))} placeholder="nama@domain.com" />
+                    <Input label="Subjek" value={qrEmailSubject} onChange={e => setQrEmailSubject(sanitizeText(e.target.value))} placeholder="Subjek email" />
+                    <Textarea label="Isi Pesan" rows={3} value={qrEmailBody} onChange={e => setQrEmailBody(sanitizeText(e.target.value))} placeholder="Isi email otomatis…" />
+                  </div>
+                )}
+                {qrTemplate === "phone" && (
+                  <Input label="Nomor Telepon" value={qrPhone} onChange={e => setQrPhone(sanitizeText(e.target.value))} placeholder="+62812xxxxxxx" />
+                )}
+              </div>
+            </>
           )}
 
           {mode === "barcode" && (
-            <div className="grid grid-cols-2 gap-4 text-xs">
-              <Select
-                label="Format barcode"
-                value={barcodeFormat}
-                onChange={(e) => setBarcodeFormat(e.target.value)}
-              >
-                <option value="CODE128">CODE 128 (umum)</option>
-                <option value="EAN13">EAN-13</option>
-                <option value="EAN8">EAN-8</option>
-                <option value="UPC">UPC</option>
-                <option value="CODE39">CODE 39</option>
-                <option value="ITF14">ITF-14</option>
-              </Select>
-              <div className="flex items-end">
-                <p className="text-[11px] text-slate-500">
-                  Gunakan hanya angka untuk EAN/UPC/ITF agar hasil valid.
-                </p>
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+              <Textarea label="Konten Barcode" rows={4} value={barcodeContent} onChange={e => setBarcodeContent(sanitizeText(e.target.value))} placeholder="Kode produk, SKU, atau angka…" />
+              <div className="grid grid-cols-2 gap-4">
+                <Select label="Format" value={barcodeFormat} onChange={e => setBarcodeFormat(e.target.value)}>
+                  <option value="CODE128">CODE 128 (umum)</option>
+                  <option value="EAN13">EAN-13</option>
+                  <option value="EAN8">EAN-8</option>
+                  <option value="UPC">UPC</option>
+                  <option value="CODE39">CODE 39</option>
+                  <option value="ITF14">ITF-14</option>
+                </Select>
+                <Input label="Tinggi (px)" type="number" min={40} max={200} value={barcodeHeight} onChange={e => setBarcodeHeight(Number(e.target.value) || 80)} />
               </div>
+              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">⚠ Format EAN/UPC/ITF hanya mendukung angka dengan panjang tertentu.</p>
             </div>
           )}
 
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <Button onClick={generate} disabled={isGenerating || !canGenerate}>
-              {isGenerating ? "Memproses…" : "Bangun kode"}
-            </Button>
-            {error && <span className="text-[11px] text-rose-500">{error}</span>}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <div className="rounded-2xl bg-slate-950/95 p-4 text-slate-100 shadow-lg shadow-slate-900/40">
-            <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
-              Pratinjau langsung
-            </p>
-            <div className="flex items-center justify-center rounded-xl bg-slate-900/60 p-4 overflow-x-auto">
-              {mode === "qr" ? (
-                qrUrlImage ? (
-                  <img
-                    src={qrUrlImage}
-                    alt="QR preview"
-                    className="h-[220px] w-[220px] max-w-full rounded-2xl bg-white p-3 shadow-md"
-                  />
-                ) : (
-                  <div className="h-[220px] w-[220px] rounded-2xl border border-dashed border-slate-700/80 bg-slate-900/40" />
-                )
-              ) : (
-                <canvas
-                  ref={barcodeCanvasRef}
-                  className="max-h-[220px] max-w-full rounded-xl bg-slate-900/40 p-2"
-                />
-              )}
+          {/* Customization */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5">
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Kustomisasi</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Warna Utama</Label>
+                <div className="flex items-center gap-3 mt-1">
+                  <input type="color" value={fgColor} onChange={e => setFgColor(e.target.value)} className="h-11 w-11 rounded-xl border border-slate-200 cursor-pointer p-0.5 shadow-sm" />
+                  <span className="text-sm font-mono text-slate-500">{fgColor}</span>
+                </div>
+              </div>
+              <div>
+                <Label>Warna Latar</Label>
+                <div className="flex items-center gap-3 mt-1">
+                  <input type="color" value={bgColor} onChange={e => setBgColor(e.target.value)} className="h-11 w-11 rounded-xl border border-slate-200 cursor-pointer p-0.5 shadow-sm" />
+                  <span className="text-sm font-mono text-slate-500">{bgColor}</span>
+                </div>
+              </div>
             </div>
-            <div className="mt-3 flex justify-between text-[11px] text-slate-400">
-              <span>{mode === "qr" ? "PNG 300dpi" : barcodeFormat}</span>
-              <span>Offline first – tanpa tracking</span>
-            </div>
-          </div>
 
-          <div className="flex items-center justify-between gap-2">
-            {mode === "qr" ? (
-              <Button
-                variant="ghost"
-                onClick={downloadQR}
-                disabled={!qrUrlImage}
-                className="w-full justify-between border border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
-              >
-                <span>Unduh QR sebagai PNG</span>
-                <span className="text-[10px] text-slate-500">Siap cetak</span>
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                onClick={downloadBarcode}
-                disabled={!barcodeContent.trim()}
-                className="w-full justify-between border border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
-              >
-                <span>Unduh barcode</span>
-                <span className="text-[10px] text-slate-500">PNG high-res</span>
-              </Button>
+            {mode === "qr" && (
+              <>
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <Label>Ukuran QR</Label>
+                    <span className="text-sm font-bold text-blue-600">{size}px</span>
+                  </div>
+                  <input type="range" min={128} max={512} value={size} onChange={e => setSize(Number(e.target.value))} className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-600 bg-slate-200" />
+                </div>
+
+                <div>
+                  <Label>Logo Tengah (Opsional)</Label>
+                  <label className="mt-1 flex items-center justify-center border-2 border-dashed border-slate-300 rounded-xl p-5 cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-all group">
+                    {logoPreview ? (
+                      <div className="flex items-center gap-4 w-full">
+                        <img src={logoPreview} alt="Logo" className="w-14 h-14 rounded-xl object-cover border border-slate-200 shadow-sm" />
+                        <span className="flex-1 text-sm text-slate-600 font-medium">Logo terpasang ✓</span>
+                        <button type="button" onClick={e => { e.preventDefault(); setLogoFile(null); }} className="text-sm text-red-500 font-semibold hover:text-red-700">Hapus</button>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <div className="text-3xl mb-2">🖼</div>
+                        <p className="text-sm font-semibold text-slate-600">Upload Logo <span className="text-blue-600">PNG/JPG</span></p>
+                        <p className="text-xs text-slate-400 mt-1">Akan tampil di tengah QR code</p>
+                      </div>
+                    )}
+                    <input type="file" className="hidden" accept="image/*" onChange={e => setLogoFile(e.target.files?.[0] ?? null)} />
+                  </label>
+                </div>
+              </>
             )}
           </div>
+
+          {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 flex gap-2"><span>⚠</span>{error}</div>}
+
+          <Btn onClick={generate} disabled={isGenerating || !(mode === "qr" ? !!buildQrPayload().trim() : !!barcodeContent.trim())} className="w-full py-4 text-base">
+            {isGenerating ? "⏳ Memproses…" : mode === "qr" ? "⚡ Generate QR Code" : "⚡ Generate Barcode"}
+          </Btn>
+        </div>
+
+        {/* RIGHT: Preview */}
+        <div className="sticky top-24 space-y-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 text-center">Preview Real-time</p>
+          <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl border border-slate-200 p-8 flex flex-col items-center justify-center min-h-[380px] shadow-sm">
+            {mode === "qr" ? (
+              qrUrlImage ? (
+                <div className="bg-white p-5 rounded-2xl shadow-2xl shadow-slate-200/80">
+                  <img src={qrUrlImage} alt="QR Code" className="rounded-xl" style={{ width: Math.min(size, 260), height: Math.min(size, 260) }} />
+                </div>
+              ) : (
+                <div className="w-56 h-56 rounded-2xl border-2 border-dashed border-slate-300 flex items-center justify-center">
+                  <p className="text-sm text-slate-400 text-center px-6">Isi form di kiri untuk melihat preview QR</p>
+                </div>
+              )
+            ) : (
+              <div className="bg-white p-5 rounded-2xl shadow-xl w-full">
+                <canvas ref={barcodeCanvasRef} className="max-w-full" />
+                {!barcodeContent.trim() && <div className="h-28 flex items-center justify-center"><p className="text-sm text-slate-400">Isi konten barcode</p></div>}
+              </div>
+            )}
+          </div>
+
+          {mode === "qr" ? (
+            <Btn onClick={downloadQR} disabled={!qrUrlImage} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white border-0 text-base shadow-lg shadow-blue-600/20">
+              ⬇ Unduh QR sebagai PNG
+            </Btn>
+          ) : (
+            <Btn onClick={downloadBarcode} disabled={!barcodeContent.trim()} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white border-0 text-base shadow-lg shadow-blue-600/20">
+              ⬇ Unduh Barcode PNG
+            </Btn>
+          )}
+
+          <div className="text-center"><SectionBadge>100% browser · tanpa upload</SectionBadge></div>
         </div>
       </div>
-    </Card>
+    </div>
   );
 };
 
-// ---------- Helper untuk spesifikasi halaman PDF ----------
+// ─── PDF Lab ──────────────────────────────────────────────────────────────────
 
 function parsePageSpec(input: string, totalPages: number): number[] {
-  const parts = input
-    .split(/[,;]/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-
+  const parts = input.split(/[,;]/).map(p => p.trim()).filter(Boolean);
   const pages = new Set<number>();
-
   for (const part of parts) {
     const rangeMatch = part.match(/^(\d+)-(\d+)$/);
     if (rangeMatch) {
-      let start = parseInt(rangeMatch[1], 10);
-      let end = parseInt(rangeMatch[2], 10);
-      if (isNaN(start) || isNaN(end)) continue;
+      let start = parseInt(rangeMatch[1], 10), end = parseInt(rangeMatch[2], 10);
       if (start > end) [start, end] = [end, start];
-      for (let p = start; p <= end; p++) {
-        if (p >= 1 && p <= totalPages) pages.add(p - 1);
-      }
-      continue;
-    }
-
-    const num = parseInt(part, 10);
-    if (!isNaN(num) && num >= 1 && num <= totalPages) {
-      pages.add(num - 1);
+      for (let p = start; p <= end; p++) if (p >= 1 && p <= totalPages) pages.add(p - 1);
+    } else {
+      const num = parseInt(part, 10);
+      if (!isNaN(num) && num >= 1 && num <= totalPages) pages.add(num - 1);
     }
   }
-
   return Array.from(pages).sort((a, b) => a - b);
 }
 
-// ---------- PDF Tools ----------
-
-type PdfMode =
-  | "compress"
-  | "merge"
-  | "split"
-  | "extract"
-  | "delete"
-  | "rotate"
-  | "organize"
-  | "imagesToPdf"
-  | "textToPdf";
+type PdfMode = "compress" | "merge" | "split" | "extract" | "delete" | "rotate" | "organize" | "imagesToPdf" | "textToPdf";
 
 const PdfTools: React.FC = () => {
-  const [mode, setMode] = useState<PdfMode>("compress");
+  const [mode, setMode] = useState<PdfMode>("merge");
   const [files, setFiles] = useState<File[]>([]);
   const [isWorking, setIsWorking] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
-
   const [pageSpec, setPageSpec] = useState("1-3");
-  const [compressLevel, setCompressLevel] = useState<"low" | "medium" | "high">(
-    "medium"
-  );
+  const [compressLevel, setCompressLevel] = useState<"low" | "medium" | "high">("medium");
   const [rotateSpec, setRotateSpec] = useState("semua");
   const [rotateDegrees, setRotateDegrees] = useState(90);
   const [textForPdf, setTextForPdf] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
 
-  const isPdfMode = useMemo(
-    () =>
-      [
-        "compress",
-        "merge",
-        "split",
-        "extract",
-        "delete",
-        "rotate",
-        "organize",
-      ].includes(mode),
-    [mode]
-  );
+  const isPdfMode = ["compress", "merge", "split", "extract", "delete", "rotate", "organize"].includes(mode);
 
-  const onFilesChange = (fileList: FileList | null) => {
-    if (!fileList) return;
-    const arr = Array.from(fileList);
-    if (isPdfMode) {
-      setFiles(arr.filter((f) => f.type === "application/pdf"));
-    } else if (mode === "imagesToPdf") {
-      setFiles(
-        arr.filter((f) =>
-          ["image/jpeg", "image/png", "image/jpg"].includes(f.type)
-        )
-      );
-    }
+  const addFiles = (incoming: File[]) => {
+    const filtered = isPdfMode
+      ? incoming.filter(f => f.type === "application/pdf")
+      : mode === "imagesToPdf"
+      ? incoming.filter(f => ["image/jpeg", "image/png", "image/jpg"].includes(f.type))
+      : incoming;
+    setFiles(prev => mode === "merge" || mode === "imagesToPdf" ? [...prev, ...filtered] : [filtered[0]]);
+    setInfo(null);
   };
+
+  const removeFile = (i: number) => setFiles(files.filter((_, idx) => idx !== i));
+
+  const totalSizeMb = useMemo(() =>
+    files.length ? Math.round(files.reduce((a, f) => a + f.size, 0) / 1024 / 1024 * 10) / 10 : 0,
+    [files]);
 
   const handleRun = async () => {
     setInfo(null);
-
     if (mode === "textToPdf") {
       if (!textForPdf.trim()) return;
       setIsWorking(true);
       try {
         const pdfDoc = await PDFDocument.create();
         const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-        const fontSize = 12;
-        const lineHeight = fontSize + 4;
-        const margin = 50;
-
-        const rawLines = textForPdf.split(/\r?\n/);
+        const fontSize = 12, lineHeight = fontSize + 4, margin = 50;
+        const maxCharsPerLine = Math.floor((595.28 - margin * 2) / (fontSize * 0.55));
         const allLines: string[] = [];
-        const approxCharWidth = fontSize * 0.55;
-
-        const maxCharsPerLine = Math.floor(
-          (595.28 - margin * 2) / approxCharWidth
-        ); // lebar A4
-
-        for (const raw of rawLines) {
-          if (!raw) {
-            allLines.push("");
-            continue;
-          }
-          let start = 0;
-          while (start < raw.length) {
-            allLines.push(raw.slice(start, start + maxCharsPerLine));
-            start += maxCharsPerLine;
-          }
+        for (const raw of textForPdf.split(/\r?\n/)) {
+          if (!raw) { allLines.push(""); continue; }
+          for (let s = 0; s < raw.length; s += maxCharsPerLine) allLines.push(raw.slice(s, s + maxCharsPerLine));
         }
-
-        let page = pdfDoc.addPage();
-        let { height } = page.getSize();
-        let y = height - margin;
-
-        const addPage = () => {
-          page = pdfDoc.addPage();
-          const size = page.getSize();
-          height = size.height;
-          y = height - margin;
-        };
-
+        let page = pdfDoc.addPage(), { height } = page.getSize(), y = height - margin;
+        const addPage = () => { page = pdfDoc.addPage(); ({ height } = page.getSize()); y = height - margin; };
         for (const line of allLines) {
           if (y < margin + lineHeight) addPage();
-          if (line) {
-            page.drawText(line, {
-              x: margin,
-              y: y - lineHeight,
-              size: fontSize,
-              font,
-              color: rgb(0, 0, 0),
-            });
-          }
+          if (line) page.drawText(line, { x: margin, y: y - lineHeight, size: fontSize, font, color: rgb(0, 0, 0) });
           y -= lineHeight;
         }
-
-        const bytes = await pdfDoc.save();
-        const blob = new Blob([bytes.buffer as ArrayBuffer], {
-          type: "application/pdf",
-        });
+        const blob = new Blob([await pdfDoc.save()], { type: "application/pdf" });
         downloadBlob(blob, "gamato-text.pdf");
-        setInfo("Teks diubah menjadi PDF, siap dibagikan.");
-      } catch (err: any) {
-        console.error(err);
-        setInfo(err?.message || "Gagal membuat PDF dari teks.");
-      } finally {
-        setIsWorking(false);
-      }
+        setInfo("✓ Teks berhasil dikonversi ke PDF.");
+      } catch (err: any) { setInfo("✗ " + (err?.message || "Gagal.")); }
+      finally { setIsWorking(false); }
       return;
     }
-
     if (mode === "imagesToPdf") {
       if (!files.length) return;
       setIsWorking(true);
@@ -870,521 +537,240 @@ const PdfTools: React.FC = () => {
         const pdfDoc = await PDFDocument.create();
         for (const file of files) {
           const bytes = new Uint8Array(await fileToArrayBuffer(file));
-          const isPng = file.type === "image/png";
-          const image = isPng
-            ? await pdfDoc.embedPng(bytes)
-            : await pdfDoc.embedJpg(bytes);
+          const image = file.type === "image/png" ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
           const { width, height } = image.scale(1);
-          const page = pdfDoc.addPage([width, height]);
-          page.drawImage(image, {
-            x: 0,
-            y: 0,
-            width,
-            height,
-          });
+          const pg = pdfDoc.addPage([width, height]);
+          pg.drawImage(image, { x: 0, y: 0, width, height });
         }
-        const out = await pdfDoc.save();
-        const blob = new Blob([out.buffer as ArrayBuffer], {
-          type: "application/pdf",
-        });
-        downloadBlob(blob, "gamato-images.pdf");
-        setInfo("Gambar digabung menjadi satu PDF.");
-      } catch (err: any) {
-        console.error(err);
-        setInfo(err?.message || "Gagal membuat PDF dari gambar.");
-      } finally {
-        setIsWorking(false);
-      }
+        downloadBlob(new Blob([await pdfDoc.save()], { type: "application/pdf" }), "gamato-images.pdf");
+        setInfo(`✓ ${files.length} gambar digabung menjadi PDF.`);
+      } catch (err: any) { setInfo("✗ " + (err?.message || "Gagal.")); }
+      finally { setIsWorking(false); }
       return;
     }
-
-    // Mode-mode berbasis PDF
     if (!files.length) return;
     setIsWorking(true);
-
     try {
       if (mode === "merge") {
         const doc = await PDFDocument.create();
         for (const file of files) {
-          const bytes = await fileToArrayBuffer(file);
-          const src = await PDFDocument.load(bytes);
-          const pages = await doc.copyPages(src, src.getPageIndices());
-          pages.forEach((p) => doc.addPage(p));
+          const src = await PDFDocument.load(await fileToArrayBuffer(file));
+          (await doc.copyPages(src, src.getPageIndices())).forEach(p => doc.addPage(p));
         }
-        const mergedBytes = await doc.save();
-        const mergedBuffer = new Uint8Array(mergedBytes).buffer as ArrayBuffer;
-        const blob = new Blob([mergedBuffer], { type: "application/pdf" });
-        downloadBlob(blob, "gamato-merged.pdf");
-        setInfo("PDF digabung menjadi satu berkas.");
+        downloadBlob(new Blob([await doc.save()], { type: "application/pdf" }), "gamato-merged.pdf");
+        setInfo(`✓ ${files.length} PDF berhasil digabung.`);
       } else if (mode === "split") {
-        const [file] = files;
-        const bytes = await fileToArrayBuffer(file);
-        const src = await PDFDocument.load(bytes);
-        const total = src.getPageCount();
-        for (let i = 0; i < total; i++) {
+        const src = await PDFDocument.load(await fileToArrayBuffer(files[0]));
+        for (let i = 0; i < src.getPageCount(); i++) {
           const doc = await PDFDocument.create();
-          const [page] = await doc.copyPages(src, [i]);
-          doc.addPage(page);
-          const out = await doc.save();
-          const blob = new Blob([out.buffer as ArrayBuffer], {
-            type: "application/pdf",
-          });
-          downloadBlob(blob, `gamato-page-${i + 1}.pdf`);
+          doc.addPage((await doc.copyPages(src, [i]))[0]);
+          downloadBlob(new Blob([await doc.save()], { type: "application/pdf" }), `gamato-page-${i + 1}.pdf`);
         }
-        setInfo("Setiap halaman diekspor menjadi file terpisah.");
+        setInfo(`✓ PDF dipecah menjadi ${src.getPageCount()} file.`);
       } else if (mode === "compress") {
-        const [file] = files;
-        const bytes = await fileToArrayBuffer(file);
-
-        const doc = await PDFDocument.load(bytes, { updateMetadata: true });
-
-        if (compressLevel === "low") {
-          doc.setTitle("Compressed by Gamato Piranti (ringan)");
-        } else if (compressLevel === "medium") {
-          doc.setTitle("Compressed by Gamato Piranti (sedang)");
-        } else {
-          doc.setTitle("Compressed by Gamato Piranti (tinggi)");
-        }
-
-        const compressed = await doc.save({ useObjectStreams: true });
-        const blob = new Blob([compressed.buffer as ArrayBuffer], {
-          type: "application/pdf",
-        });
-        const filename =
-          compressLevel === "low"
-            ? "gamato-compressed-light.pdf"
-            : compressLevel === "medium"
-            ? "gamato-compressed-medium.pdf"
-            : "gamato-compressed-strong.pdf";
-        downloadBlob(blob, filename);
-
-        if (compressLevel === "low") {
-          setInfo(
-            "Kompresi ringan: struktur PDF dioptimalkan ulang tanpa mengubah kualitas halaman."
-          );
-        } else if (compressLevel === "medium") {
-          setInfo(
-            "Kompresi sedang: penyimpanan ulang objek dan stream dilakukan sedikit lebih agresif. Efek bergantung pada isi PDF."
-          );
-        } else {
-          setInfo(
-            "Kompresi tinggi: cocok sebagai tahap awal sebelum kompresi lanjutan di sisi server. Efek di browser bergantung pada struktur file awal."
-          );
-        }
+        const doc = await PDFDocument.load(await fileToArrayBuffer(files[0]), { updateMetadata: true });
+        doc.setTitle(`Compressed by Gamato Piranti (${compressLevel})`);
+        downloadBlob(new Blob([await doc.save({ useObjectStreams: true })], { type: "application/pdf" }), `gamato-compressed-${compressLevel}.pdf`);
+        setInfo(`✓ PDF dikompresi (level: ${compressLevel}).`);
       } else if (mode === "extract") {
-        const [file] = files;
-        const bytes = await fileToArrayBuffer(file);
-        const src = await PDFDocument.load(bytes);
-        const total = src.getPageCount();
-        const indices = parsePageSpec(pageSpec, total);
-        if (!indices.length) {
-          setInfo("Rentang halaman tidak valid.");
-        } else {
-          const doc = await PDFDocument.create();
-          const pages = await doc.copyPages(src, indices);
-          pages.forEach((p) => doc.addPage(p));
-          const out = await doc.save();
-          const blob = new Blob([out.buffer as ArrayBuffer], {
-            type: "application/pdf",
-          });
-          downloadBlob(blob, "gamato-extract.pdf");
-          setInfo(
-            `Halaman ${pageSpec} diekstrak menjadi PDF baru (total ${pages.length} halaman).`
-          );
-        }
+        const src = await PDFDocument.load(await fileToArrayBuffer(files[0]));
+        const indices = parsePageSpec(pageSpec, src.getPageCount());
+        if (!indices.length) { setInfo("✗ Rentang halaman tidak valid."); return; }
+        const doc = await PDFDocument.create();
+        (await doc.copyPages(src, indices)).forEach(p => doc.addPage(p));
+        downloadBlob(new Blob([await doc.save()], { type: "application/pdf" }), "gamato-extract.pdf");
+        setInfo(`✓ ${indices.length} halaman diekstrak.`);
       } else if (mode === "delete") {
-        const [file] = files;
-        const bytes = await fileToArrayBuffer(file);
-        const src = await PDFDocument.load(bytes);
+        const src = await PDFDocument.load(await fileToArrayBuffer(files[0]));
         const total = src.getPageCount();
         const toRemove = new Set(parsePageSpec(pageSpec, total));
-        const keep: number[] = [];
-        for (let i = 0; i < total; i++) {
-          if (!toRemove.has(i)) keep.push(i);
-        }
+        const keep = Array.from({ length: total }, (_, i) => i).filter(i => !toRemove.has(i));
         const doc = await PDFDocument.create();
-        const pages = await doc.copyPages(src, keep);
-        pages.forEach((p) => doc.addPage(p));
-        const out = await doc.save();
-        const blob = new Blob([out.buffer as ArrayBuffer], {
-          type: "application/pdf",
-        });
-        downloadBlob(blob, "gamato-clean.pdf");
-        setInfo(
-          `Halaman ${pageSpec} dihapus. Dokumen baru memiliki ${keep.length} halaman.`
-        );
-      } else if (mode === "organize") {
-        const [file] = files;
-        const bytes = await fileToArrayBuffer(file);
-        const src = await PDFDocument.load(bytes);
-        const total = src.getPageCount();
-
-        const tokens = pageSpec
-          .split(/[,;]/)
-          .map((p) => p.trim())
-          .filter(Boolean);
-        const order: number[] = [];
-
-        for (const token of tokens) {
-          const rangeMatch = token.match(/^(\d+)-(\d+)$/);
-          if (rangeMatch) {
-            let start = parseInt(rangeMatch[1], 10);
-            let end = parseInt(rangeMatch[2], 10);
-            if (isNaN(start) || isNaN(end)) continue;
-            if (start > end) [start, end] = [end, start];
-            for (let p = start; p <= end; p++) {
-              if (p >= 1 && p <= total) order.push(p - 1);
-            }
-          } else {
-            const num = parseInt(token, 10);
-            if (!isNaN(num) && num >= 1 && num <= total) {
-              order.push(num - 1);
-            }
-          }
-        }
-
-        if (!order.length) {
-          setInfo("Urutan halaman tidak valid. Gunakan nomor halaman yang ada.");
-        } else {
-          const doc = await PDFDocument.create();
-          const pages = await doc.copyPages(src, order);
-          pages.forEach((p) => doc.addPage(p));
-          const out = await doc.save();
-          const blob = new Blob([out.buffer as ArrayBuffer], {
-            type: "application/pdf",
-          });
-          downloadBlob(blob, "gamato-organized.pdf");
-          setInfo(
-            `Halaman diatur ulang sesuai urutan yang Anda tentukan (${pageSpec}).`
-          );
-        }
+        (await doc.copyPages(src, keep)).forEach(p => doc.addPage(p));
+        downloadBlob(new Blob([await doc.save()], { type: "application/pdf" }), "gamato-clean.pdf");
+        setInfo(`✓ ${toRemove.size} halaman dihapus. Sisa ${keep.length} halaman.`);
       } else if (mode === "rotate") {
-        const [file] = files;
-        const bytes = await fileToArrayBuffer(file);
-        const src = await PDFDocument.load(bytes);
+        const src = await PDFDocument.load(await fileToArrayBuffer(files[0]));
         const total = src.getPageCount();
-        const target =
-          rotateSpec === "semua"
-            ? Array.from({ length: total }, (_, i) => i)
-            : parsePageSpec(pageSpec, total);
-
-        target.forEach((idx) => {
-          const page = src.getPage(idx);
-          page.setRotation(degrees(rotateDegrees));
-        });
-
-        const out = await src.save();
-        const blob = new Blob([out.buffer as ArrayBuffer], {
-          type: "application/pdf",
-        });
-        downloadBlob(blob, "gamato-rotated.pdf");
-        setInfo(
-          rotateSpec === "semua"
-            ? `Semua halaman diputar ${rotateDegrees}°.`
-            : `Halaman ${pageSpec} diputar ${rotateDegrees}°.`
-        );
+        const target = rotateSpec === "semua" ? Array.from({ length: total }, (_, i) => i) : parsePageSpec(pageSpec, total);
+        target.forEach(idx => src.getPage(idx).setRotation(degrees(rotateDegrees)));
+        downloadBlob(new Blob([await src.save()], { type: "application/pdf" }), "gamato-rotated.pdf");
+        setInfo(`✓ ${target.length} halaman diputar ${rotateDegrees}°.`);
+      } else if (mode === "organize") {
+        const src = await PDFDocument.load(await fileToArrayBuffer(files[0]));
+        const total = src.getPageCount();
+        const order: number[] = [];
+        for (const token of pageSpec.split(/[,;]/).map(p => p.trim()).filter(Boolean)) {
+          const m = token.match(/^(\d+)-(\d+)$/);
+          if (m) { let s = parseInt(m[1]), e = parseInt(m[2]); if (s > e) [s, e] = [e, s]; for (let p = s; p <= e; p++) if (p >= 1 && p <= total) order.push(p - 1); }
+          else { const n = parseInt(token); if (!isNaN(n) && n >= 1 && n <= total) order.push(n - 1); }
+        }
+        if (!order.length) { setInfo("✗ Urutan halaman tidak valid."); return; }
+        const doc = await PDFDocument.create();
+        (await doc.copyPages(src, order)).forEach(p => doc.addPage(p));
+        downloadBlob(new Blob([await doc.save()], { type: "application/pdf" }), "gamato-organized.pdf");
+        setInfo(`✓ Halaman diatur ulang (${pageSpec}).`);
       }
-    } catch (err: any) {
-      console.error(err);
-      setInfo(err?.message || "Gagal memproses PDF.");
-    } finally {
-      setIsWorking(false);
-    }
+    } catch (err: any) { setInfo("✗ " + (err?.message || "Gagal memproses PDF.")); }
+    finally { setIsWorking(false); }
   };
 
-  const totalSizeMb = useMemo(
-    () =>
-      files.length
-        ? Math.round(
-            (files.reduce((acc, f) => acc + f.size, 0) / 1024 / 1024) * 10
-          ) / 10
-        : 0,
-    [files]
-  );
+  const PDF_MODES: { id: PdfMode; label: string; emoji: string; desc: string }[] = [
+    { id: "merge", label: "Gabung", emoji: "🔗", desc: "Combine multiple PDFs" },
+    { id: "split", label: "Pecah", emoji: "✂️", desc: "Tiap halaman jadi file" },
+    { id: "compress", label: "Kompres", emoji: "📦", desc: "Kurangi ukuran file" },
+    { id: "extract", label: "Ekstrak", emoji: "📤", desc: "Ambil halaman tertentu" },
+    { id: "delete", label: "Hapus Halaman", emoji: "🗑", desc: "Buang halaman" },
+    { id: "rotate", label: "Putar", emoji: "🔄", desc: "Rotasi halaman" },
+    { id: "organize", label: "Atur Ulang", emoji: "🗂", desc: "Susun urutan halaman" },
+    { id: "imagesToPdf", label: "Gambar → PDF", emoji: "🖼", desc: "JPG/PNG ke PDF" },
+    { id: "textToPdf", label: "Teks → PDF", emoji: "📄", desc: "Teks polos ke PDF" },
+  ];
 
   return (
-    <Card
-      title="PDF Lab – Dokumen Suite"
-      description="Toolkit PDF lengkap: kompres, gabung, pecah, atur ulang halaman, dan konversi."
-    >
-      <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div className="space-y-4">
-          <div className="flex gap-2 overflow-x-auto rounded-xl bg-slate-50 p-1 text-xs font-medium text-slate-600 flex-nowrap whitespace-nowrap md:flex-wrap md:whitespace-normal md:overflow-x-visible [&>button]:shrink-0 [&>button]:whitespace-nowrap snap-x snap-mandatory">
-            {/* Ensure tabs don't shrink on mobile to prevent overlap */}
-            
-            {(
-              [
-                ["compress", "Kompres"],
-                ["merge", "Gabung"],
-                ["split", "Pecah per halaman"],
-                ["extract", "Ekstrak halaman"],
-                ["delete", "Hapus halaman"],
-                ["rotate", "Putar halaman"],
-                ["organize", "Atur halaman"],
-                ["imagesToPdf", "Gambar → PDF"],
-                ["textToPdf", "Teks → PDF"],
-              ] as [PdfMode, string][]
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setMode(id)}
-                className={cn(
-                  "whitespace-nowrap rounded-lg px-3 py-1.5 transition",
-                  mode === id ? "bg-white shadow-sm" : "hover:bg-slate-100"
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+    <div className="space-y-6">
+      {/* Mode cards */}
+      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+        {PDF_MODES.map(m => (
+          <button key={m.id} type="button" onClick={() => { setMode(m.id); setFiles([]); setInfo(null); }}
+            className={cn("flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 text-center transition-all",
+              mode === m.id ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50")}>
+            <span className="text-2xl">{m.emoji}</span>
+            <span className={cn("text-xs font-bold", mode === m.id ? "text-blue-700" : "text-slate-700")}>{m.label}</span>
+          </button>
+        ))}
+      </div>
 
+      <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
+        {/* LEFT */}
+        <div className="space-y-5">
+          {/* Text-to-PDF special */}
           {mode === "textToPdf" ? (
-            <div className="space-y-3 text-xs">
-              <Textarea
-                label="Isi teks untuk dijadikan PDF"
-                rows={10}
-                value={textForPdf}
-                onChange={(e) => setTextForPdf(e.target.value)}
-                placeholder="Tulis atau tempel teks di sini. Cocok untuk catatan rapat, checklist, atau draf cepat."
-              />
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={handleRun}
-                  disabled={isWorking || !textForPdf.trim()}
-                >
-                  {isWorking ? "Memproses…" : "Jadikan PDF"}
-                </Button>
-                <p className="text-[11px] text-slate-500">
-                  Layout sederhana, aman dibuka di semua pembaca PDF.
-                </p>
-              </div>
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+              <Textarea label="Teks untuk dijadikan PDF" rows={12} value={textForPdf} onChange={e => setTextForPdf(e.target.value)} placeholder="Tulis atau tempel teks di sini…" />
+              <Btn onClick={handleRun} disabled={isWorking || !textForPdf.trim()} className="w-full py-3.5">
+                {isWorking ? "⏳ Memproses…" : "📄 Jadikan PDF"}
+              </Btn>
             </div>
           ) : (
             <>
-              <div className="space-y-2 text-xs">
-                <Label>
-                  {mode === "imagesToPdf"
-                    ? "Masukkan gambar (JPG/PNG)"
-                    : "Masukkan berkas PDF"}
-                </Label>
-                <div className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/70 p-3">
-                  <input
-                    type="file"
-                    accept={
-                      mode === "imagesToPdf"
-                        ? "image/jpeg,image/png,image/jpg"
-                        : "application/pdf"
-                    }
-                    multiple={mode === "merge" || mode === "imagesToPdf"}
-                    onChange={(e) => onFilesChange(e.target.files)}
-                    className="block w-full text-[11px] text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-slate-50 hover:file:bg-slate-800"
-                  />
-                  <p className="text-[11px] text-slate-500">
-                    {mode === "merge"
-                      ? "Pilih beberapa PDF, urutan mengikuti daftar file."
-                      : mode === "imagesToPdf"
-                      ? "Pilih satu atau beberapa gambar. Setiap gambar jadi satu halaman."
-                      : "Satu PDF, diproses langsung di browser."}
-                  </p>
-                  {files.length > 0 && (
-                    <p className="text-[11px] text-slate-600">
-                      {files.length} file dipilih – Total ≈ {totalSizeMb} MB
-                    </p>
-                  )}
-                </div>
-                {mode === "compress" && (
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-slate-600">
-                    <span>Tingkat kompresi:</span>
-                    <button
-                      type="button"
-                      onClick={() => setCompressLevel("low")}
-                      className={cn(
-                        "rounded-full px-2 py-0.5",
-                        compressLevel === "low"
-                          ? "bg-slate-900 text-slate-50"
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                      )}
-                    >
-                      Ringan
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCompressLevel("medium")}
-                      className={cn(
-                        "rounded-full px-2 py-0.5",
-                        compressLevel === "medium"
-                          ? "bg-slate-900 text-slate-50"
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                      )}
-                    >
-                      Sedang
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCompressLevel("high")}
-                      className={cn(
-                        "rounded-full px-2 py-0.5",
-                        compressLevel === "high"
-                          ? "bg-slate-900 text-slate-50"
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                      )}
-                    >
-                      Tinggi
-                    </button>
-                    <span className="text-[10px] text-slate-400">
-                      Semua level memakai optimasi struktur di browser. Untuk kompresi ekstrim biasanya diperlukan pemrosesan tambahan di sisi server.
-                    </span>
-                  </div>
-                )}
-              </div>
+              {/* Dropzone */}
+              <Dropzone
+                onFiles={addFiles}
+                accept={mode === "imagesToPdf" ? "image/jpeg,image/png" : "application/pdf"}
+                multiple={mode === "merge" || mode === "imagesToPdf"}
+                label={mode === "imagesToPdf" ? "Drop gambar JPG/PNG di sini" : "Drop file PDF di sini"}
+                sublabel={mode === "merge" ? "Bisa pilih beberapa file — urutannya bisa diatur" : "atau klik untuk browse"}
+                icon={mode === "imagesToPdf" ? "🖼" : "📄"}
+                isDragging={isDragging}
+                setIsDragging={setIsDragging}
+              />
 
-              {(mode === "extract" || mode === "delete" || mode === "rotate" || mode === "organize") && (
-                <div className="grid gap-3 rounded-xl bg-slate-50/70 p-3 text-xs md:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label>
-                      {mode === "organize" ? "Urutan halaman baru" : "Rentang halaman"}
-                    </Label>
-                    <Input
-                      placeholder={
-                        mode === "organize"
-                          ? "contoh: 3,1,2,5-7"
-                          : "contoh: 1-3,5,8-9"
-                      }
-                      value={pageSpec}
-                      onChange={(e) => setPageSpec(e.target.value)}
-                    />
-                    <p className="text-[11px] text-slate-500">
-                      {mode === "organize"
-                        ? "Urutan mengikuti angka yang Anda masukkan. Gunakan koma untuk memisah, dan tanda minus untuk rentang. Halaman mulai dari 1."
-                        : "Gunakan koma untuk memisah, dan tanda minus untuk rentang. Halaman mulai dari 1."}
-                    </p>
+              {/* File list */}
+              {files.length > 0 && (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-slate-50">
+                    <p className="text-sm font-bold text-slate-700">{files.length} file dipilih</p>
+                    <span className="text-xs text-slate-400">Total: {totalSizeMb} MB</span>
                   </div>
-                  {mode === "rotate" && (
-                    <div className="space-y-2">
-                      <Label>Opsi putar</Label>
-                      <div className="flex flex-wrap gap-2">
-                        <Select
-                          value={rotateSpec}
-                          onChange={(e) => setRotateSpec(e.target.value)}
-                        >
-                          <option value="semua">Putar semua halaman</option>
-                          <option value="pilih">Hanya halaman tertentu</option>
-                        </Select>
-                        <Select
-                          value={rotateDegrees}
-                          onChange={(e) =>
-                            setRotateDegrees(parseInt(e.target.value, 10) || 90)
-                          }
-                        >
-                          <option value={90}>90°</option>
-                          <option value={180}>180°</option>
-                          <option value={270}>270°</option>
-                        </Select>
+                  <div className="divide-y divide-slate-100">
+                    {files.map((file, i) => (
+                      <div key={`${file.name}-${i}`} className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50 transition-colors">
+                        <span className="text-xl">{mode === "imagesToPdf" ? "🖼" : "📄"}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-slate-800 truncate">{file.name}</p>
+                          <p className="text-xs text-slate-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                        </div>
+                        <button type="button" onClick={() => removeFile(i)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">✕</button>
                       </div>
-                      <p className="text-[11px] text-slate-500">
-                        Untuk halaman tertentu, isi rentang di sebelah kiri.
-                      </p>
-                    </div>
-                  )}
+                    ))}
+                  </div>
                 </div>
               )}
 
-              <div className="flex items-center gap-2 pt-1">
-                <Button
-                  onClick={handleRun}
-                  disabled={isWorking || !files.length}
-                >
-                  {isWorking ? "Memproses…" : "Proses dokumen"}
-                </Button>
-                <p className="text-[11px] text-slate-500">
-                  Hasil diunduh langsung sebagai dokumen baru.
-                </p>
-              </div>
+              {/* Options for specific modes */}
+              {mode === "compress" && (
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+                  <p className="text-sm font-bold text-slate-700">Tingkat Kompresi</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(["low", "medium", "high"] as const).map(l => (
+                      <button key={l} type="button" onClick={() => setCompressLevel(l)}
+                        className={cn("py-2.5 rounded-xl text-sm font-semibold border-2 transition-all capitalize",
+                          compressLevel === l ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-slate-300")}>
+                        {l === "low" ? "Ringan" : l === "medium" ? "Sedang" : "Tinggi"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(mode === "extract" || mode === "delete" || mode === "organize") && (
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+                  <Input label={mode === "organize" ? "Urutan Halaman Baru" : "Rentang Halaman"}
+                    value={pageSpec} onChange={e => setPageSpec(e.target.value)}
+                    placeholder={mode === "organize" ? "contoh: 3,1,2,5-7" : "contoh: 1-3,5,8-9"} />
+                  <p className="text-xs text-slate-400">Gunakan koma untuk memisah, tanda minus untuk rentang. Halaman mulai dari 1.</p>
+                </div>
+              )}
+
+              {mode === "rotate" && (
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Select label="Target Halaman" value={rotateSpec} onChange={e => setRotateSpec(e.target.value)}>
+                      <option value="semua">Semua halaman</option>
+                      <option value="pilih">Halaman tertentu</option>
+                    </Select>
+                    <Select label="Derajat Putar" value={rotateDegrees} onChange={e => setRotateDegrees(parseInt(e.target.value))}>
+                      <option value={90}>90°</option>
+                      <option value={180}>180°</option>
+                      <option value={270}>270°</option>
+                    </Select>
+                  </div>
+                  {rotateSpec === "pilih" && <Input label="Rentang Halaman" value={pageSpec} onChange={e => setPageSpec(e.target.value)} placeholder="contoh: 1-3,5" />}
+                </div>
+              )}
+
+              <Btn onClick={handleRun} disabled={isWorking || !files.length} className="w-full py-4 text-base">
+                {isWorking ? "⏳ Memproses…" : "⚡ Proses PDF"}
+              </Btn>
             </>
           )}
         </div>
 
-        <div className="flex flex-col justify-between gap-3 rounded-2xl bg-slate-950/95 p-4 text-[11px] text-slate-200 shadow-lg shadow-slate-900/40">
-          <div className="space-y-2">
-            <p className="font-medium uppercase tracking-[0.16em] text-slate-400">
-              Mode aktif
-            </p>
-            <ul className="space-y-1.5 text-slate-200">
-              {mode === "compress" && (
-                <>
-                  <li>• Optimasi ulang struktur PDF tanpa mengubah isi.</li>
-                  <li>• Cocok untuk lampiran email dan upload portal.</li>
-                  <li>• Mengurangi ukuran dengan menyimpan ulang objek.</li>
-                </>
-              )}
-              {mode === "merge" && (
-                <>
-                  <li>• Gabungkan beberapa PDF menjadi satu.</li>
-                  <li>• Urutan mengikuti daftar file yang dipilih.</li>
-                  <li>• Ideal untuk menggabungkan laporan, kontrak, atau lampiran.</li>
-                </>
-              )}
-              {mode === "split" && (
-                <>
-                  <li>• Setiap halaman menjadi file PDF terpisah.</li>
-                  <li>• Praktis untuk membagi dokumen yang tebal.</li>
-                </>
-              )}
-              {mode === "extract" && (
-                <>
-                  <li>• Pilih hanya halaman yang Anda butuhkan.</li>
-                  <li>• Contoh: 1-3,5,10-12.</li>
-                </>
-              )}
-              {mode === "delete" && (
-                <>
-                  <li>• Buang halaman yang tidak diperlukan.</li>
-                  <li>• Nomor halaman yang diisi akan dihapus.</li>
-                </>
-              )}
-              {mode === "rotate" && (
-                <>
-                  <li>• Putar orientasi halaman yang miring.</li>
-                  <li>• Bisa semua halaman atau hanya rentang tertentu.</li>
-                </>
-              )}
-              {mode === "organize" && (
-                <>
-                  <li>• Susun ulang urutan halaman secara bebas.</li>
-                  <li>• Masukkan urutan baru, misalnya: 3,1,2,5-7.</li>
-                  <li>• Cocok untuk menata ulang dokumen sebelum dibagikan.</li>
-                </>
-              )}
-              {mode === "imagesToPdf" && (
-                <>
-                  <li>• Konversi JPG/PNG menjadi PDF.</li>
-                  <li>• Satu gambar menjadi satu halaman.</li>
-                </>
-              )}
-              {mode === "textToPdf" && (
-                <>
-                  <li>• Ubah teks polos menjadi dokumen PDF.</li>
-                  <li>• Layout minimalis, cocok untuk catatan dan checklist.</li>
-                </>
-              )}
-            </ul>
+        {/* RIGHT: Info panel */}
+        <div className="bg-slate-900 rounded-2xl p-5 text-white space-y-4 sticky top-24">
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Mode Aktif</p>
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">{PDF_MODES.find(m2 => m2.id === mode)?.emoji}</span>
+            <div>
+              <p className="font-bold text-white">{PDF_MODES.find(m2 => m2.id === mode)?.label}</p>
+              <p className="text-xs text-slate-400">{PDF_MODES.find(m2 => m2.id === mode)?.desc}</p>
+            </div>
           </div>
-          <div className="space-y-1 border-t border-slate-800/60 pt-3">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-              Status
-            </p>
-            <p className="text-[11px] text-slate-200">
-              {info || "Siap menerima berkas atau teks."}
-            </p>
+          <div className="border-t border-slate-800 pt-4 space-y-2 text-sm text-slate-300">
+            {mode === "merge" && <><p>• Gabungkan beberapa PDF jadi satu.</p><p>• Urutan mengikuti daftar file.</p></>}
+            {mode === "split" && <><p>• Setiap halaman jadi file terpisah.</p><p>• File diunduh satu per satu.</p></>}
+            {mode === "compress" && <><p>• Optimasi struktur PDF tanpa mengubah isi.</p><p>• Tiga level kompresi tersedia.</p></>}
+            {mode === "extract" && <><p>• Ambil halaman tertentu saja.</p><p>• Contoh: 1-3,5,10</p></>}
+            {mode === "delete" && <><p>• Hapus halaman yang tidak dibutuhkan.</p><p>• Sisa halaman tetap utuh.</p></>}
+            {mode === "rotate" && <><p>• Putar halaman yang miring.</p><p>• Bisa semua atau halaman tertentu.</p></>}
+            {mode === "organize" && <><p>• Susun ulang urutan halaman.</p><p>• Contoh: 3,1,2 untuk urutkan ulang.</p></>}
+            {mode === "imagesToPdf" && <><p>• JPG/PNG jadi halaman PDF.</p><p>• Tiap gambar = 1 halaman.</p></>}
+            {mode === "textToPdf" && <><p>• Teks polos jadi PDF rapi.</p><p>• Layout sederhana, bisa dibuka di mana saja.</p></>}
           </div>
+          {info && (
+            <div className={cn("rounded-xl px-4 py-3 text-sm font-medium border", info.startsWith("✓") ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20")}>
+              {info}
+            </div>
+          )}
+          <div className="pt-2"><SectionBadge>Offline — tanpa upload</SectionBadge></div>
         </div>
       </div>
-    </Card>
+    </div>
   );
 };
 
-// ---------- Document Tools (.docx) ----------
+// ─── Doc Studio ───────────────────────────────────────────────────────────────
 
 const DocTools: React.FC = () => {
   const [text, setText] = useState("");
@@ -1395,56 +781,27 @@ const DocTools: React.FC = () => {
   const [snapshot, setSnapshot] = useState<string | null>(null);
   const [snapshotLabel, setSnapshotLabel] = useState<string | null>(null);
 
-  const stats = useMemo(() => {
-    const chars = text.length;
-    const words = (text.match(/\S+/g) || []).length;
-    const lines = text.split(/\r?\n/).length;
-    return { chars, words, lines };
-  }, [text]);
+  const stats = useMemo(() => ({
+    chars: text.length,
+    words: (text.match(/\S+/g) || []).length,
+    lines: text.split(/\r?\n/).length,
+  }), [text]);
 
-  const outline = useMemo(
-    () => {
-      const lines = text.split(/\r?\n/);
-      const entries: { line: string; index: number }[] = [];
-      lines.forEach((line, idx) => {
-        const trimmed = line.trim();
-        if (!trimmed) return;
-        const looksLikeHeading =
-          trimmed.startsWith("#") ||
-          (trimmed.length <= 80 &&
-            trimmed === trimmed.toUpperCase() &&
-            /[A-ZÀ-ÖØ-Ý]/.test(trimmed));
-        if (looksLikeHeading) {
-          entries.push({ line: trimmed.replace(/^#+\s*/, ""), index: idx });
-        }
-      });
-      return entries;
-    },
-    [text]
-  );
+  const outline = useMemo(() => {
+    return text.split(/\r?\n/).reduce<{ line: string; index: number }[]>((acc, line, idx) => {
+      const t = line.trim();
+      if (!t) return acc;
+      if (t.startsWith("#") || (t.length <= 80 && t === t.toUpperCase() && /[A-ZÀ-ÖØ-Ý]/.test(t)))
+        acc.push({ line: t.replace(/^#+\s*/, ""), index: idx });
+      return acc;
+    }, []);
+  }, [text]);
 
   const exportDocx = async () => {
     if (!text.trim()) return;
-    const lines = text.split(/\n/g);
-    const paragraphs = lines.map((line) =>
-      new Paragraph({
-        children: [new TextRun({ text: line || " ", size: 22 })],
-      })
-    );
-
-    const doc = new Document({
-      sections: [
-        {
-          properties: {},
-          children: paragraphs,
-        },
-      ],
-    });
-
-    const safeName = sanitizeFileName(fileName || "gamato-dokumen");
-    const blob = await Packer.toBlob(doc);
-    downloadBlob(blob, `${safeName}.docx`);
-    setDocInfo("Dokumen .docx berhasil disiapkan.");
+    const doc = new Document({ sections: [{ properties: {}, children: text.split("\n").map(line => new Paragraph({ children: [new TextRun({ text: line || " ", size: 22 })] })) }] });
+    downloadBlob(await Packer.toBlob(doc), `${sanitizeFileName(fileName || "gamato-dokumen")}.docx`);
+    setDocInfo("✓ Dokumen .docx berhasil disiapkan.");
   };
 
   const exportPdf = async () => {
@@ -1452,899 +809,515 @@ const DocTools: React.FC = () => {
     try {
       const pdfDoc = await PDFDocument.create();
       const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const fontSize = 12;
-      const lineHeight = fontSize + 4;
-      const margin = 50;
-
-      const rawLines = text.split(/\r?\n/);
+      const fontSize = 12, lineHeight = fontSize + 4, margin = 50;
+      const maxChars = Math.floor((595.28 - margin * 2) / (fontSize * 0.55));
       const allLines: string[] = [];
-      const approxCharWidth = fontSize * 0.55;
-      const maxCharsPerLine = Math.floor(
-        (595.28 - margin * 2) / approxCharWidth
-      );
-
-      for (const raw of rawLines) {
-        if (!raw) {
-          allLines.push("");
-          continue;
-        }
-        let start = 0;
-        while (start < raw.length) {
-          allLines.push(raw.slice(start, start + maxCharsPerLine));
-          start += maxCharsPerLine;
-        }
+      for (const raw of text.split(/\r?\n/)) {
+        if (!raw) { allLines.push(""); continue; }
+        for (let s = 0; s < raw.length; s += maxChars) allLines.push(raw.slice(s, s + maxChars));
       }
-
-      let page = pdfDoc.addPage();
-      let { height } = page.getSize();
-      let y = height - margin;
-
-      const addPage = () => {
-        page = pdfDoc.addPage();
-        const size = page.getSize();
-        height = size.height;
-        y = height - margin;
-      };
-
+      let page = pdfDoc.addPage(), { height } = page.getSize(), y = height - margin;
+      const addPage = () => { page = pdfDoc.addPage(); ({ height } = page.getSize()); y = height - margin; };
       for (const line of allLines) {
         if (y < margin + lineHeight) addPage();
-        if (line) {
-          page.drawText(line, {
-            x: margin,
-            y: y - lineHeight,
-            size: fontSize,
-            font,
-            color: rgb(0, 0, 0),
-          });
-        }
+        if (line) page.drawText(line, { x: margin, y: y - lineHeight, size: fontSize, font, color: rgb(0, 0, 0) });
         y -= lineHeight;
       }
-
-      const bytes = await pdfDoc.save();
-      const blob = new Blob([bytes.buffer as ArrayBuffer], {
-        type: "application/pdf",
-      });
-      const safeName = sanitizeFileName(fileName || "gamato-dokumen");
-      downloadBlob(blob, `${safeName}.pdf`);
-      setDocInfo("Dokumen disimpan sebagai PDF sederhana.");
-    } catch (err) {
-      console.error(err);
-      setDocInfo("Gagal menyusun PDF dari dokumen ini.");
-    }
+      downloadBlob(new Blob([await pdfDoc.save()], { type: "application/pdf" }), `${sanitizeFileName(fileName || "gamato-dokumen")}.pdf`);
+      setDocInfo("✓ Disimpan sebagai PDF.");
+    } catch { setDocInfo("✗ Gagal menyusun PDF."); }
   };
 
   const downloadTxt = () => {
     if (!text) return;
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-    const safeName = sanitizeFileName(fileName || "gamato-dokumen");
-    downloadBlob(blob, `${safeName}.txt`);
-    setDocInfo("Teks diekspor sebagai .txt.");
+    downloadBlob(new Blob([text], { type: "text/plain;charset=utf-8" }), `${sanitizeFileName(fileName || "gamato-dokumen")}.txt`);
+    setDocInfo("✓ Diekspor sebagai .txt.");
   };
 
   const importTxt = (files: FileList | null) => {
-    if (!files || !files[0]) return;
-    const file = files[0];
-    const reader = new FileReader();
-    reader.onload = () => {
-      setText((reader.result as string) || "");
-      const base = file.name.replace(/\.[^.]+$/, "");
-      setFileName(base || fileName);
-      setDocInfo("Isi dokumen diambil dari berkas .txt.");
-    };
-    reader.readAsText(file);
+    if (!files?.[0]) return;
+    const r = new FileReader();
+    r.onload = () => { setText((r.result as string) || ""); setDocInfo("✓ File .txt berhasil diimpor."); };
+    r.readAsText(files[0]);
   };
 
   const generateTemplate = (kind: "notulen" | "surat" | "catatan") => {
-    if (kind === "notulen") {
-      setText(
-        "NOTULEN RAPAT\nGamato Piranti\n\nAgenda:\n- \n\nPeserta:\n- \n\nRingkasan:\n- \n\nKeputusan:\n- \n\nTindak Lanjut:\n- "
-      );
-      setFileName("Notulen Gamato");
-      setDocInfo("Template notulen rapat dimuat.");
-    } else if (kind === "surat") {
-      setText(
-        "Surabaya, .................................... 20..\n\nKepada Yth.\n...........................................\nDi Tempat\n\nPerihal: ...........................................\n\nDengan hormat,\n\n...\n\nHormat kami,\nGamato Piranti\n"
-      );
-      setFileName("Surat Gamato");
-      setDocInfo("Template surat resmi dimuat.");
-    } else {
-      setText("Catatan kerja Gamato Piranti\n\n- ");
-      setFileName("Catatan Gamato");
-      setDocInfo("Template catatan kerja dimuat.");
-    }
+    if (kind === "notulen") { setText("NOTULEN RAPAT\nGamato Piranti\n\nAgenda:\n- \n\nPeserta:\n- \n\nRingkasan:\n- \n\nKeputusan:\n- \n\nTindak Lanjut:\n- "); setFileName("Notulen Gamato"); }
+    else if (kind === "surat") { setText("Surabaya, .................................... 20..\n\nKepada Yth.\n...........................................\nDi Tempat\n\nPerihal: ...........................................\n\nDengan hormat,\n\n...\n\nHormat kami,\nGamato Piranti\n"); setFileName("Surat Gamato"); }
+    else { setText("Catatan kerja Gamato Piranti\n\n- "); setFileName("Catatan Gamato"); }
+    setDocInfo("✓ Template dimuat.");
   };
 
   const quickClean = (kind: "trim" | "noBlank") => {
     if (!text) return;
-    if (kind === "trim") {
-      setText(text.replace(/[ \t]+/g, " "));
-      setDocInfo("Spasi ganda dirapikan.");
-    } else {
-      setText(
-        text
-          .split(/\r?\n/)
-          .filter((l) => l.trim() !== "")
-          .join("\n")
-      );
-      setDocInfo("Baris kosong dihapus.");
-    }
+    if (kind === "trim") { setText(text.replace(/[ \t]+/g, " ")); setDocInfo("✓ Spasi ganda dirapikan."); }
+    else { setText(text.split(/\r?\n/).filter(l => l.trim() !== "").join("\n")); setDocInfo("✓ Baris kosong dihapus."); }
   };
 
   const runFindReplace = () => {
-    if (!findText) return;
-    if (!text.includes(findText)) {
-      setDocInfo("Teks yang dicari tidak ditemukan.");
-      return;
-    }
-    const replaced = text.split(findText).join(replaceText);
-    setText(replaced);
-    setDocInfo("Pencarian dan penggantian selesai.");
+    if (!findText || !text.includes(findText)) { setDocInfo("Teks tidak ditemukan."); return; }
+    setText(text.split(findText).join(replaceText));
+    setDocInfo("✓ Cari & ganti selesai.");
   };
 
   const changeCase = (kind: "upper" | "lower" | "title") => {
     if (!text) return;
-    if (kind === "upper") {
-      setText(text.toUpperCase());
-      setDocInfo("Seluruh teks diubah menjadi huruf besar.");
-    } else if (kind === "lower") {
-      setText(text.toLowerCase());
-      setDocInfo("Seluruh teks diubah menjadi huruf kecil.");
-    } else {
-      const titled = text.replace(/\w\S*/g, (word) => {
-        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-      });
-      setText(titled);
-      setDocInfo("Setiap kata diawali huruf besar.");
-    }
-  };
-
-  const saveSnapshot = () => {
-    if (!text) return;
-    setSnapshot(text);
-    setSnapshotLabel(fileName || "Tanpa judul");
-    setDocInfo("Snapshot sesi disimpan. Anda bisa kembali kapan saja.");
-  };
-
-  const restoreSnapshot = () => {
-    if (!snapshot) return;
-    setText(snapshot);
-    setDocInfo("Teks dikembalikan ke snapshot yang tersimpan.");
+    if (kind === "upper") setText(text.toUpperCase());
+    else if (kind === "lower") setText(text.toLowerCase());
+    else setText(text.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()));
+    setDocInfo("✓ Huruf diubah.");
   };
 
   return (
-    <Card
-      title="Doc Studio"
-      description="Editor dokumen ringan dengan ekspor .docx, .pdf, dan .txt, plus utilitas pengolah teks."
-    >
-      <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div className="space-y-4">
-          <Input
-            label="Nama dokumen"
-            value={fileName}
-            onChange={(e) => setFileName(sanitizeFileName(e.target.value))}
-            placeholder="Judul atau nama file"
-          />
-
-          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-            <span>Template cepat:</span>
-            <button
-              type="button"
-              onClick={() => generateTemplate("notulen")}
-              className="rounded-full bg-slate-100 px-2 py-0.5 hover:bg-slate-200"
-            >
-              Notulen rapat
-            </button>
-            <button
-              type="button"
-              onClick={() => generateTemplate("surat")}
-              className="rounded-full bg-slate-100 px-2 py-0.5 hover:bg-slate-200"
-            >
-              Surat resmi
-            </button>
-            <button
-              type="button"
-              onClick={() => generateTemplate("catatan")}
-              className="rounded-full bg-slate-100 px-2 py-0.5 hover:bg-slate-200"
-            >
-              Catatan kerja
-            </button>
-          </div>
-
-          <div className="grid gap-3 text-[11px] text-slate-600 md:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1.5fr)]">
-            <Input
-              label="Cari teks"
-              value={findText}
-              onChange={(e) => setFindText(e.target.value)}
-              placeholder="Kata atau frasa yang akan dicari"
-            />
-            <Input
-              label="Ganti dengan"
-              value={replaceText}
-              onChange={(e) => setReplaceText(e.target.value)}
-              placeholder="Teks pengganti (opsional)"
-            />
-            <div className="flex items-end gap-2">
-              <Button
-                variant="ghost"
-                onClick={runFindReplace}
-                disabled={!findText}
-                className="flex-1"
-              >
-                Cari & ganti
-              </Button>
-              <button
-                type="button"
-                onClick={() => {
-                  setFindText("");
-                  setReplaceText("");
-                }}
-                className="text-[10px] text-slate-400 hover:text-slate-600"
-              >
-                Reset
-              </button>
+    <div className="grid lg:grid-cols-[1fr_280px] gap-6 items-start">
+      {/* Editor */}
+      <div className="space-y-4">
+        {/* Toolbar */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3 bg-slate-50 border-b border-slate-200">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📝</span>
+              <Input value={fileName} onChange={e => setFileName(sanitizeFileName(e.target.value))} className="border-0 bg-transparent p-0 font-bold text-slate-800 text-base focus:ring-0 shadow-none" placeholder="Nama dokumen" />
             </div>
-          </div>
-
-          <Textarea
-            label="Isi dokumen"
-            rows={12}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Tulis isi dokumen di sini."
-          />
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={exportDocx} disabled={!text.trim()}>
-              Unduh sebagai .docx
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={exportPdf}
-              disabled={!text.trim()}
-              className="border border-slate-200 bg-white"
-            >
-              Unduh sebagai .pdf
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={downloadTxt}
-              disabled={!text}
-              className="border border-slate-200 bg-white"
-            >
-              Unduh sebagai .txt
-            </Button>
-            <label className="ml-auto inline-flex cursor-pointer items-center rounded-full bg-slate-50 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-100">
-              <span>Impor .txt</span>
-              <input
-                type="file"
-                accept="text/plain"
-                className="hidden"
-                onChange={(e) => importTxt(e.target.files)}
-              />
+            <label className="text-sm text-blue-600 font-semibold cursor-pointer hover:text-blue-700">
+              Import .txt <input type="file" accept="text/plain" className="hidden" onChange={e => importTxt(e.target.files)} />
             </label>
           </div>
 
-          <div className="flex flex-wrap gap-2 text-[11px] text-slate-500">
-            <span>Perapian cepat:</span>
-            <button
-              type="button"
-              onClick={() => quickClean("trim")}
-              className="rounded-full bg-slate-100 px-2 py-0.5 hover:bg-slate-200"
-            >
-              Rapikan spasi
-            </button>
-            <button
-              type="button"
-              onClick={() => quickClean("noBlank")}
-              className="rounded-full bg-slate-100 px-2 py-0.5 hover:bg-slate-200"
-            >
-              Hapus baris kosong
-            </button>
-            <button
-              type="button"
-              onClick={() => changeCase("upper")}
-              className="rounded-full bg-slate-100 px-2 py-0.5 hover:bg-slate-200"
-            >
-              HURUF BESAR
-            </button>
-            <button
-              type="button"
-              onClick={() => changeCase("lower")}
-              className="rounded-full bg-slate-100 px-2 py-0.5 hover:bg-slate-200"
-            >
-              huruf kecil
-            </button>
-            <button
-              type="button"
-              onClick={() => changeCase("title")}
-              className="rounded-full bg-slate-100 px-2 py-0.5 hover:bg-slate-200"
-            >
-              Kapitalisasi kata
-            </button>
+          {/* Quick actions */}
+          <div className="flex flex-wrap gap-2 px-5 py-3 border-b border-slate-100 bg-white">
+            <span className="text-xs font-bold text-slate-400 self-center mr-1">Template:</span>
+            {[["notulen", "📋 Notulen"], ["surat", "📮 Surat"], ["catatan", "🗒 Catatan"]].map(([k, l]) => (
+              <button key={k} type="button" onClick={() => generateTemplate(k as any)} className="text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors">{l}</button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2 px-5 py-3 border-b border-slate-100 bg-white">
+            <span className="text-xs font-bold text-slate-400 self-center mr-1">Ubah:</span>
+            {[["trim", "Rapikan spasi"], ["noBlank", "Hapus baris kosong"]].map(([k, l]) => (
+              <button key={k} type="button" onClick={() => quickClean(k as any)} className="text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg">{l}</button>
+            ))}
+            {[["upper", "AA"], ["lower", "aa"], ["title", "Aa"]].map(([k, l]) => (
+              <button key={k} type="button" onClick={() => changeCase(k as any)} className="text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg">{l}</button>
+            ))}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-            <span>Snapshot sesi:</span>
-            <button
-              type="button"
-              onClick={saveSnapshot}
-              className="rounded-full bg-slate-100 px-2 py-0.5 hover:bg-slate-200"
-            >
-              Simpan snapshot
-            </button>
-            <button
-              type="button"
-              onClick={restoreSnapshot}
-              disabled={!snapshot}
-              className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600 hover:bg-slate-200 disabled:text-slate-300"
-            >
-              Kembalikan snapshot
-            </button>
-            {snapshotLabel && (
-              <span className="text-[10px] text-slate-400">
-                Tersimpan terakhir: {snapshotLabel}
-              </span>
-            )}
+          {/* Find & Replace */}
+          <div className="flex gap-3 px-5 py-3 border-b border-slate-100 bg-white items-end">
+            <div className="flex-1">
+              <Input label="Cari" value={findText} onChange={e => setFindText(e.target.value)} placeholder="Teks yang dicari…" className="py-2" />
+            </div>
+            <div className="flex-1">
+              <Input label="Ganti dengan" value={replaceText} onChange={e => setReplaceText(e.target.value)} placeholder="Teks pengganti…" className="py-2" />
+            </div>
+            <Btn onClick={runFindReplace} disabled={!findText} variant="secondary" className="py-2 shrink-0">Ganti</Btn>
+            <button type="button" onClick={() => { setFindText(""); setReplaceText(""); }} className="text-xs text-slate-400 hover:text-slate-600 shrink-0 pb-0.5">Reset</button>
           </div>
+
+          {/* Text area */}
+          <textarea
+            className="w-full h-80 px-5 py-4 text-sm text-slate-800 leading-relaxed font-mono focus:outline-none resize-none"
+            value={text}
+            onChange={e => setText(e.target.value)}
+            placeholder="Mulai menulis di sini, atau gunakan template di atas…"
+          />
         </div>
 
-        <div className="flex flex-col justify-between gap-3 rounded-2xl bg-slate-950/95 p-4 text-[11px] text-slate-100 shadow-lg shadow-slate-900/40">
-          <div className="space-y-2">
-            <p className="font-medium uppercase tracking-[0.16em] text-slate-400">
-              Pratinjau ringkas
-            </p>
-            <div className="max-h-60 space-y-2 overflow-hidden rounded-xl bg-slate-900/50 p-3 text-[11px] leading-relaxed text-slate-100">
-              {text ? (
-                text.split("\n").slice(0, 14).map((line, idx) => (
-                  <p key={idx} className="whitespace-pre-wrap">
-                    {line || " "}
-                  </p>
-                ))
-              ) : (
-                <p className="text-slate-500">
-                  Mulai menulis atau impor .txt untuk melihat pratinjau di sini.
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="space-y-2 border-t border-slate-800/60 pt-3 text-[11px]">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-              Statistik dokumen
-            </p>
-            <div className="flex flex-wrap gap-3 text-slate-200">
-              <span>{stats.words} kata</span>
-              <span>{stats.chars} karakter</span>
-              <span>{stats.lines} baris</span>
-            </div>
-            {docInfo && (
-              <p className="mt-1 text-[10px] text-emerald-400">{docInfo}</p>
-            )}
-            <p className="mt-1 text-[10px] text-slate-400">
-              Ekspor .docx, .pdf, dan .txt aman dibuka di Word, Google Docs, dan office suite lain.
-            </p>
-            {outline.length > 0 && (
-              <div className="mt-2 space-y-1">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-                  Outline dokumen
-                </p>
-                <ul className="space-y-0.5 text-[11px] text-slate-200">
-                  {outline.map((item) => (
-                    <li key={item.index} className="truncate">
-                      <span className="mr-1 text-slate-500">•</span>
-                      {item.line}
-                    </li>
-                  ))}
-                </ul>
+        {/* Export buttons */}
+        <div className="flex flex-wrap gap-3">
+          <Btn onClick={exportDocx} disabled={!text.trim()} className="bg-blue-600 hover:bg-blue-700 text-white border-0 shadow-md shadow-blue-600/20">
+            ⬇ Unduh .docx
+          </Btn>
+          <Btn onClick={exportPdf} disabled={!text.trim()} variant="secondary">⬇ Unduh .pdf</Btn>
+          <Btn onClick={downloadTxt} disabled={!text} variant="secondary">⬇ Unduh .txt</Btn>
+          <Btn onClick={() => { setSnapshot(text); setSnapshotLabel(fileName); setDocInfo("✓ Snapshot disimpan."); }} disabled={!text} variant="ghost">📸 Snapshot</Btn>
+          <Btn onClick={() => { if (snapshot) { setText(snapshot); setDocInfo("✓ Snapshot dipulihkan."); } }} disabled={!snapshot} variant="ghost">↩ Pulihkan{snapshotLabel ? ` "${snapshotLabel}"` : ""}</Btn>
+        </div>
+
+        {docInfo && <div className={cn("text-sm rounded-xl px-4 py-2.5 border font-medium", docInfo.startsWith("✓") ? "bg-green-50 text-green-700 border-green-200" : "bg-amber-50 text-amber-700 border-amber-200")}>{docInfo}</div>}
+      </div>
+
+      {/* Stats sidebar */}
+      <div className="space-y-4 sticky top-24">
+        <div className="bg-slate-900 rounded-2xl p-5 text-white space-y-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Statistik</p>
+          <div className="grid grid-cols-3 gap-3">
+            {[["Kata", stats.words], ["Karakter", stats.chars], ["Baris", stats.lines]].map(([l, v]) => (
+              <div key={l as string} className="text-center bg-slate-800 rounded-xl p-3">
+                <div className="text-2xl font-bold text-white">{v}</div>
+                <div className="text-xs text-slate-400 mt-0.5">{l}</div>
               </div>
-            )}
+            ))}
           </div>
+
+          {/* Preview */}
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Preview</p>
+            <div className="bg-slate-800 rounded-xl p-3 max-h-40 overflow-hidden text-xs text-slate-300 leading-relaxed font-mono">
+              {text ? text.split("\n").slice(0, 10).map((l, i) => <p key={i} className="truncate">{l || "​"}</p>) : <p className="text-slate-500">Mulai menulis…</p>}
+            </div>
+          </div>
+
+          {/* Outline */}
+          {outline.length > 0 && (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Outline</p>
+              <ul className="space-y-1">
+                {outline.slice(0, 8).map(item => (
+                  <li key={item.index} className="text-xs text-slate-300 truncate flex gap-1.5">
+                    <span className="text-slate-500">›</span>{item.line}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <SectionBadge>Offline — data tidak dikirim</SectionBadge>
         </div>
       </div>
-    </Card>
+    </div>
   );
 };
 
-// ---------- Image Lab (Gambar) ----------
+// ─── Image Lab ────────────────────────────────────────────────────────────────
+
+type ImageMode = "compress" | "resize" | "convert" | "rotate";
 
 const ImageTools: React.FC = () => {
-  type ImageMode = "compress" | "resize" | "convert" | "rotate";
-
   const [mode, setMode] = useState<ImageMode>("compress");
   const [files, setFiles] = useState<File[]>([]);
   const [quality, setQuality] = useState(75);
   const [maxWidth, setMaxWidth] = useState(1600);
   const [maxHeight, setMaxHeight] = useState(1600);
-  const [targetFormat, setTargetFormat] = useState<
-    "original" | "jpeg" | "png" | "webp"
-  >("jpeg");
+  const [targetFormat, setTargetFormat] = useState<"original" | "jpeg" | "png" | "webp">("jpeg");
   const [rotateDeg, setRotateDeg] = useState(90);
   const [isWorking, setIsWorking] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 
-  const onFilesChange = (fileList: FileList | null) => {
-    if (!fileList) return;
-    const arr = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
-    setFiles(arr);
+  const totalSizeMb = useMemo(() =>
+    files.length ? Math.round(files.reduce((a, f) => a + f.size, 0) / 1024 / 1024 * 10) / 10 : 0,
+    [files]);
+
+  const addFiles = (incoming: File[]) => {
+    const imgs = incoming.filter(f => f.type.startsWith("image/"));
+    setFiles(imgs);
+    setPreviewUrls(imgs.map(f => URL.createObjectURL(f)));
+    setInfo(null);
   };
-
-  const totalSizeMb = useMemo(
-    () =>
-      files.length
-        ? Math.round(
-            (files.reduce((acc, f) => acc + f.size, 0) / 1024 / 1024) * 10
-          ) / 10
-        : 0,
-    [files]
-  );
 
   const processImages = async () => {
     if (!files.length) return;
-    setIsWorking(true);
-    setInfo(null);
-
+    setIsWorking(true); setInfo(null);
     try {
       for (const file of files) {
         const dataUrl = await fileToDataUrl(file);
         const img = new Image();
         img.src = dataUrl;
-        await new Promise<void>((resolve, reject) => {
-          img.onload = () => resolve();
-          img.onerror = () => reject(new Error("Gagal memuat gambar."));
-        });
-
-        let drawWidth = img.width;
-        let drawHeight = img.height;
-
+        await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = reject; });
+        let drawW = img.width, drawH = img.height;
         if (mode === "resize") {
-          const limitW = maxWidth > 0 ? maxWidth : img.width;
-          const limitH = maxHeight > 0 ? maxHeight : img.height;
-          const scale = Math.min(limitW / img.width, limitH / img.height, 1);
-          drawWidth = Math.round(img.width * scale);
-          drawHeight = Math.round(img.height * scale);
+          const lw = maxWidth > 0 ? maxWidth : img.width, lh = maxHeight > 0 ? maxHeight : img.height;
+          const scale = Math.min(lw / img.width, lh / img.height, 1);
+          drawW = Math.round(img.width * scale); drawH = Math.round(img.height * scale);
         }
-
         const angle = mode === "rotate" ? rotateDeg : 0;
-        const radians = (angle * Math.PI) / 180;
-
-        let canvasWidth = drawWidth;
-        let canvasHeight = drawHeight;
-        if (angle === 90 || angle === 270) {
-          canvasWidth = drawHeight;
-          canvasHeight = drawWidth;
-        }
-
+        const radians = angle * Math.PI / 180;
+        const cw = (angle === 90 || angle === 270) ? drawH : drawW;
+        const ch = (angle === 90 || angle === 270) ? drawW : drawH;
         const canvas = document.createElement("canvas");
-        canvas.width = canvasWidth;
-        canvas.height = canvasHeight;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("Canvas tidak tersedia.");
-
-        ctx.save();
-        ctx.translate(canvasWidth / 2, canvasHeight / 2);
+        canvas.width = cw; canvas.height = ch;
+        const ctx = canvas.getContext("2d")!;
+        ctx.save(); ctx.translate(cw / 2, ch / 2);
         if (angle !== 0) ctx.rotate(radians);
-        ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+        ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
         ctx.restore();
-
-        const originalType =
-          file.type && file.type.startsWith("image/")
-            ? file.type
-            : "image/png";
-
-        let mime: string;
-        if (targetFormat === "original") {
-          mime = originalType;
-        } else if (targetFormat === "jpeg") {
-          mime = "image/jpeg";
-        } else if (targetFormat === "png") {
-          mime = "image/png";
-        } else {
-          mime = "image/webp";
-        }
-
+        const origType = file.type?.startsWith("image/") ? file.type : "image/png";
+        const mime = targetFormat === "original" ? origType : targetFormat === "jpeg" ? "image/jpeg" : targetFormat === "png" ? "image/png" : "image/webp";
         const q = Math.min(Math.max(quality, 10), 100) / 100;
-        const needQuality = mime === "image/jpeg" || mime === "image/webp";
-
-        const blob = await new Promise<Blob | null>((resolve) => {
-          canvas.toBlob(
-            (b) => resolve(b),
-            mime,
-            needQuality ? q : undefined
-          );
-        });
-
+        const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(b => resolve(b), mime, (mime === "image/jpeg" || mime === "image/webp") ? q : undefined));
         if (!blob) continue;
-
         const base = file.name.replace(/\.[^.]+$/, "");
-        const ext =
-          mime === "image/jpeg"
-            ? "jpg"
-            : mime === "image/png"
-            ? "png"
-            : mime === "image/webp"
-            ? "webp"
-            : "img";
-        const suffix =
-          mode === "compress"
-            ? "compressed"
-            : mode === "resize"
-            ? "resized"
-            : mode === "convert"
-            ? "converted"
-            : "rotated";
-        const filename = `${base}-gp-${suffix}.${ext}`;
-        downloadBlob(blob, filename);
+        const ext = mime === "image/jpeg" ? "jpg" : mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "img";
+        const suffix = mode === "compress" ? "compressed" : mode === "resize" ? "resized" : mode === "convert" ? "converted" : "rotated";
+        downloadBlob(blob, `${base}-gp-${suffix}.${ext}`);
       }
-
-      setInfo(`${files.length} gambar diproses.`);
-    } catch (err: any) {
-      console.error(err);
-      setInfo(err?.message || "Gagal memproses gambar.");
-    } finally {
-      setIsWorking(false);
-    }
+      setInfo(`✓ ${files.length} gambar berhasil diproses.`);
+    } catch (err: any) { setInfo("✗ " + (err?.message || "Gagal.")); }
+    finally { setIsWorking(false); }
   };
 
+  const IMG_MODES: { id: ImageMode; label: string; emoji: string }[] = [
+    { id: "compress", label: "Kompres", emoji: "📦" },
+    { id: "resize", label: "Ubah Ukuran", emoji: "📐" },
+    { id: "convert", label: "Konversi Format", emoji: "🔄" },
+    { id: "rotate", label: "Putar", emoji: "↩" },
+  ];
+
   return (
-    <Card
-      title="Image Lab – Gambar"
-      description="Kompres, ubah ukuran, konversi, dan putar gambar langsung di browser."
-    >
-      <div className="grid gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div className="space-y-4 text-xs">
-          <div className="flex gap-2 overflow-x-auto rounded-xl bg-slate-50 p-1 font-medium text-slate-600 flex-nowrap whitespace-nowrap [&>button]:shrink-0 [&>button]:whitespace-nowrap">
-            {/* Prevent button shrink to avoid overlap */}
-            {(
-              [
-                ["compress", "Kompres"],
-                ["resize", "Ubah ukuran"],
-                ["convert", "Konversi format"],
-                ["rotate", "Putar"],
-              ] as [ImageMode, string][]
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setMode(id)}
-                className={cn(
-                  "whitespace-nowrap rounded-lg px-3 py-1.5 transition",
-                  mode === id ? "bg-white shadow-sm" : "hover:bg-slate-100"
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+    <div className="space-y-6">
+      {/* Mode tabs */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {IMG_MODES.map(m => (
+          <button key={m.id} type="button" onClick={() => { setMode(m.id); setFiles([]); setPreviewUrls([]); setInfo(null); }}
+            className={cn("flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all",
+              mode === m.id ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:border-slate-300")}>
+            <span className="text-2xl">{m.emoji}</span>
+            <span className={cn("text-sm font-bold", mode === m.id ? "text-blue-700" : "text-slate-700")}>{m.label}</span>
+          </button>
+        ))}
+      </div>
 
-          <div className="space-y-2">
-            <Label>Masukkan gambar</Label>
-            <div className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/70 p-3">
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) => onFilesChange(e.target.files)}
-                className="block w-full text-[11px] text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-slate-50 hover:file:bg-slate-800"
-              />
-              <p className="text-[11px] text-slate-500">
-                Pilih satu atau beberapa gambar. Semua diproses langsung di browser.
-              </p>
-              {files.length > 0 && (
-                <p className="text-[11px] text-slate-600">
-                  {files.length} file – Total ≈ {totalSizeMb} MB
-                </p>
-              )}
-            </div>
-          </div>
-
-          {mode === "resize" && (
-            <div className="grid gap-3 rounded-xl bg-slate-50/70 p-3 md:grid-cols-2">
-              <Input
-                label="Lebar maksimum (px)"
-                type="number"
-                min={0}
-                value={maxWidth}
-                onChange={(e) => setMaxWidth(parseInt(e.target.value, 10) || 0)}
-              />
-              <Input
-                label="Tinggi maksimum (px)"
-                type="number"
-                min={0}
-                value={maxHeight}
-                onChange={(e) => setMaxHeight(parseInt(e.target.value, 10) || 0)}
-              />
-              <p className="col-span-full text-[11px] text-slate-500">
-                Rasio gambar dipertahankan. Jika 0, ukuran asli akan dipertahankan untuk sisi tersebut.
-              </p>
+      <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
+        {/* LEFT */}
+        <div className="space-y-5">
+          {files.length === 0 ? (
+            <Dropzone onFiles={addFiles} accept="image/*" multiple label="Drop gambar di sini" sublabel="JPG, PNG, WEBP — bisa beberapa file" icon="🖼" isDragging={isDragging} setIsDragging={setIsDragging} />
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3 bg-slate-50 border-b border-slate-100">
+                <p className="text-sm font-bold text-slate-700">{files.length} gambar · {totalSizeMb} MB</p>
+                <button type="button" onClick={() => { setFiles([]); setPreviewUrls([]); setInfo(null); }} className="text-sm text-red-500 font-semibold hover:text-red-700">Ganti File</button>
+              </div>
+              <div className="p-4 flex flex-wrap gap-3">
+                {previewUrls.map((url, i) => (
+                  <div key={i} className="relative group">
+                    <img src={url} alt="" className="w-20 h-20 object-cover rounded-xl border border-slate-200 shadow-sm" />
+                    <button type="button" onClick={() => { setFiles(f => f.filter((_, j) => j !== i)); setPreviewUrls(u => u.filter((_, j) => j !== i)); }}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs items-center justify-center hidden group-hover:flex">✕</button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
-          {mode === "rotate" && (
-            <div className="grid gap-3 rounded-xl bg-slate-50/70 p-3 md:grid-cols-2">
-              <Select
-                label="Derajat putar"
-                value={rotateDeg}
-                onChange={(e) => setRotateDeg(parseInt(e.target.value, 10) || 90)}
-              >
-                <option value={90}>90°</option>
+          {/* Mode-specific options */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Opsi</p>
+
+            {mode === "resize" && (
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Lebar Maks (px)" type="number" min={0} value={maxWidth} onChange={e => setMaxWidth(parseInt(e.target.value) || 0)} />
+                <Input label="Tinggi Maks (px)" type="number" min={0} value={maxHeight} onChange={e => setMaxHeight(parseInt(e.target.value) || 0)} />
+                <p className="col-span-2 text-xs text-slate-400">Rasio gambar tetap terjaga. Nilai 0 = mengikuti asli.</p>
+              </div>
+            )}
+
+            {mode === "rotate" && (
+              <Select label="Derajat Putar" value={rotateDeg} onChange={e => setRotateDeg(parseInt(e.target.value))}>
+                <option value={90}>90° searah jarum jam</option>
                 <option value={180}>180°</option>
-                <option value={270}>270°</option>
+                <option value={270}>270° (90° berlawanan)</option>
               </Select>
-              <p className="text-[11px] text-slate-500">
-                Setiap gambar akan diputar dengan sudut yang dipilih.
-              </p>
-            </div>
-          )}
+            )}
 
-          <div className="grid gap-3 rounded-xl bg-slate-50/70 p-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,2fr)]">
-            <Select
-              label="Format keluaran"
-              value={targetFormat}
-              onChange={(e) =>
-                setTargetFormat(
-                  (e.target.value as "original" | "jpeg" | "png" | "webp") ||
-                    "jpeg"
-                )
-              }
-            >
-              <option value="original">Sesuai asli</option>
-              <option value="jpeg">JPEG</option>
-              <option value="png">PNG</option>
-              <option value="webp">WEBP</option>
-            </Select>
-            <div className="space-y-1.5">
-              <Label>Kualitas (untuk JPEG/WEBP)</Label>
-              <input
-                type="range"
-                min={30}
-                max={100}
-                value={quality}
-                onChange={(e) => setQuality(parseInt(e.target.value, 10) || 75)}
-                className="w-full accent-slate-900"
-              />
-              <p className="text-[11px] text-slate-500">
-                Nilai lebih rendah akan mengecilkan ukuran berkas namun menurunkan detail.
-              </p>
+            <div className="grid grid-cols-2 gap-4">
+              <Select label="Format Output" value={targetFormat} onChange={e => setTargetFormat(e.target.value as any)}>
+                <option value="original">Sesuai asli</option>
+                <option value="jpeg">JPEG</option>
+                <option value="png">PNG</option>
+                <option value="webp">WEBP</option>
+              </Select>
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <Label>Kualitas (JPEG/WEBP)</Label>
+                  <span className="text-sm font-bold text-blue-600">{quality}%</span>
+                </div>
+                <input type="range" min={10} max={100} value={quality} onChange={e => setQuality(parseInt(e.target.value))} className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-600 bg-slate-200" />
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pt-1">
-            <Button
-              onClick={processImages}
-              disabled={isWorking || !files.length}
-            >
-              {isWorking ? "Memproses…" : "Proses gambar"}
-            </Button>
-            <p className="text-[11px] text-slate-500">
-              Setiap gambar akan diunduh sebagai berkas baru.
-            </p>
-          </div>
+          {info && <div className={cn("text-sm rounded-xl px-4 py-3 border font-medium", info.startsWith("✓") ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200")}>{info}</div>}
+
+          <Btn onClick={processImages} disabled={isWorking || !files.length} className="w-full py-4 text-base">
+            {isWorking ? "⏳ Memproses…" : `⚡ Proses ${files.length > 0 ? files.length : ""} Gambar`}
+          </Btn>
         </div>
 
-        <div className="flex flex-col justify-between gap-3 rounded-2xl bg-slate-950/95 p-4 text-[11px] text-slate-200 shadow-lg shadow-slate-900/40">
-          <div className="space-y-2">
-            <p className="font-medium uppercase tracking-[0.16em] text-slate-400">
-              Mode gambar
-            </p>
-            <ul className="space-y-1.5 text-slate-200">
-              {mode === "compress" && (
-                <>
-                  <li>• Kompres gambar tanpa mengubah dimensi.</li>
-                  <li>• Cocok untuk unggahan web dan dokumen.</li>
-                </>
-              )}
-              {mode === "resize" && (
-                <>
-                  <li>• Ubah ukuran gambar dengan rasio terjaga.</li>
-                  <li>• Berguna untuk thumbnail dan preview.</li>
-                </>
-              )}
-              {mode === "convert" && (
-                <>
-                  <li>• Konversi format antara JPEG, PNG, dan WEBP.</li>
-                  <li>• Dapat membantu mengecilkan ukuran berkas.</li>
-                </>
-              )}
-              {mode === "rotate" && (
-                <>
-                  <li>• Putar orientasi foto yang miring.</li>
-                  <li>• Menerapkan rotasi ke semua gambar yang dipilih.</li>
-                </>
-              )}
-            </ul>
+        {/* RIGHT: info */}
+        <div className="bg-slate-900 rounded-2xl p-5 text-white space-y-4 sticky top-24">
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Info Mode</p>
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">{IMG_MODES.find(m2 => m2.id === mode)?.emoji}</span>
+            <p className="font-bold text-white">{IMG_MODES.find(m2 => m2.id === mode)?.label}</p>
           </div>
-          <div className="space-y-1 border-t border-slate-800/60 pt-3">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-              Status
-            </p>
-            <p className="text-[11px] text-slate-200">
-              {info || "Siap menerima berkas gambar."}
-            </p>
+          <div className="border-t border-slate-800 pt-4 space-y-2 text-sm text-slate-300">
+            {mode === "compress" && <><p>• Kurangi ukuran file tanpa mengubah dimensi.</p><p>• Atur kualitas dengan slider.</p></>}
+            {mode === "resize" && <><p>• Ubah dimensi gambar dengan rasio tetap.</p><p>• Ideal untuk thumbnail dan upload.</p></>}
+            {mode === "convert" && <><p>• Konversi antar format JPEG, PNG, WEBP.</p><p>• WEBP biasanya paling kecil ukurannya.</p></>}
+            {mode === "rotate" && <><p>• Putar foto yang miring atau terbalik.</p><p>• Diterapkan ke semua file yang dipilih.</p></>}
           </div>
+          <SectionBadge>Offline — tanpa upload</SectionBadge>
         </div>
       </div>
-    </Card>
+    </div>
   );
 };
 
-// ---------- Misc Utility Shelf ----------
+// ─── Utility Shelf ────────────────────────────────────────────────────────────
 
 const UtilityShelf: React.FC = () => {
-  const [tab, setTab] = useState<
-    | "json"
-    | "bulk"
-    | "media"
-    | "alias"
-    | "tax"
-    | "interest"
-    | "stats"
-    | "wa"
-    | "pass"
-    | "meta"
-  >("json");
-
-  // JSON & Base64
+  type Tab = "json" | "bulk" | "media" | "alias" | "tax" | "interest" | "stats" | "wa" | "pass" | "meta";
+  const [tab, setTab] = useState<Tab>("json");
   const [textInput, setTextInput] = useState("");
   const [jsonPretty, setJsonPretty] = useState("");
   const [base64, setBase64] = useState("");
-
-  // Bulk text & data lab
   const [bulkInput, setBulkInput] = useState("");
   const [bulkOutput, setBulkOutput] = useState("");
   const [bulkInfo, setBulkInfo] = useState<string | null>(null);
-
-  // Link & media helper
   const [mediaUrl, setMediaUrl] = useState("");
   const [mediaInfo, setMediaInfo] = useState<string | null>(null);
   const [directDownload, setDirectDownload] = useState<string | null>(null);
-
-  // Alias / temp email planner
   const [baseEmail, setBaseEmail] = useState("");
   const [aliasDomain, setAliasDomain] = useState("example.com");
   const [aliasEmail, setAliasEmail] = useState<string | null>(null);
   const [aliasInfo, setAliasInfo] = useState<string | null>(null);
-
-  // Tax calculator
-  const [taxBase, setTaxBase] = useState<string>("");
-  const [taxRate, setTaxRate] = useState<string>("11");
+  const [taxBase, setTaxBase] = useState("");
+  const [taxRate, setTaxRate] = useState("11");
   const [taxMode, setTaxMode] = useState<"exclusive" | "inclusive">("exclusive");
-  const [taxOutput, setTaxOutput] = useState<string>("");
-
-  // Interest calculator
-  const [princ, setPrinc] = useState<string>("");
-  const [rate, setRate] = useState<string>("10");
-  const [years, setYears] = useState<string>("1");
-  const [compoundPerYear, setCompoundPerYear] = useState<number>(12);
-  const [interestOutput, setInterestOutput] = useState<string>("");
-
-  // Simple statistics
-  const [statsInput, setStatsInput] = useState<string>("");
-  const [statsOutput, setStatsOutput] = useState<string>("");
-
-  // WhatsApp Direct Link
-  const [waPhone, setWaPhone] = useState<string>("");
-  const [waMessage, setWaMessage] = useState<string>("");
-  const [waLink, setWaLink] = useState<string>("");
-
-  // Password & Token Generator
-  const [pwLength, setPwLength] = useState<number>(16);
-  const [pwUpper, setPwUpper] = useState<boolean>(true);
-  const [pwLower, setPwLower] = useState<boolean>(true);
-  const [pwNumber, setPwNumber] = useState<boolean>(true);
-  const [pwSymbol, setPwSymbol] = useState<boolean>(false);
-  const [pwOutput, setPwOutput] = useState<string>("");
-
-  // Image Metadata Remover
+  const [taxOutput, setTaxOutput] = useState("");
+  const [princ, setPrinc] = useState("");
+  const [rate, setRate] = useState("10");
+  const [years, setYears] = useState("1");
+  const [compoundPerYear, setCompoundPerYear] = useState(12);
+  const [interestOutput, setInterestOutput] = useState("");
+  const [statsInput, setStatsInput] = useState("");
+  const [statsOutput, setStatsOutput] = useState("");
+  const [waPhone, setWaPhone] = useState("");
+  const [waMessage, setWaMessage] = useState("");
+  const [waLink, setWaLink] = useState("");
+  const [pwLength, setPwLength] = useState(16);
+  const [pwUpper, setPwUpper] = useState(true);
+  const [pwLower, setPwLower] = useState(true);
+  const [pwNumber, setPwNumber] = useState(true);
+  const [pwSymbol, setPwSymbol] = useState(false);
+  const [pwOutput, setPwOutput] = useState("");
+  const [tokenBytes, setTokenBytes] = useState(32);
+  const [tokenFormat, setTokenFormat] = useState<"hex" | "base64" | "urlsafe">("hex");
+  const [tokenOutput, setTokenOutput] = useState("");
   const [metaFiles, setMetaFiles] = useState<File[]>([]);
   const [metaInfo, setMetaInfo] = useState<string | null>(null);
 
-  // Token Generator
-  const [tokenBytes, setTokenBytes] = useState<number>(32);
-  const [tokenFormat, setTokenFormat] = useState<"hex" | "base64" | "urlsafe">(
-    "hex"
-  );
-  const [tokenOutput, setTokenOutput] = useState<string>("");
-
-  // Helpers for password & token
-  const cryptoRandom = (maxExclusive: number) => {
+  const cryptoRandom = (max: number) => {
     const buf = new Uint32Array(1);
     let rand = 0;
-    do {
-      window.crypto.getRandomValues(buf);
-      rand = buf[0] / 2 ** 32;
-    } while (rand === 1);
-    return Math.floor(rand * maxExclusive);
+    do { window.crypto.getRandomValues(buf); rand = buf[0] / 2 ** 32; } while (rand === 1);
+    return Math.floor(rand * max);
   };
 
-  const shuffleInPlace = (arr: string[]) => {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = cryptoRandom(i + 1);
-      [arr[i], arr[j]] = [arr[j], arr[i]];
+  const formatCurrency = (n: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(n);
+
+  const toJsonPretty = () => {
+    try { setJsonPretty(JSON.stringify(JSON.parse(textInput), null, 2)); }
+    catch { setJsonPretty("⚠ Bukan JSON yang valid."); }
+  };
+  const toBase64 = () => setBase64(btoa(unescape(encodeURIComponent(sanitizeText(textInput)))));
+  const fromBase64 = () => { try { setTextInput(sanitizeText(decodeURIComponent(escape(atob(base64))))); } catch {} };
+
+  const runBulkOp = (kind: "unique" | "sortAsc" | "sortDesc" | "shuffle" | "number" | "prefix" | "suffix") => {
+    if (!bulkInput.trim()) return;
+    let lines = bulkInput.split(/\r?\n/), result = [...lines], info = "";
+    if (kind === "unique") { const s = new Set<string>(); result = []; lines.forEach(l => { if (!s.has(l)) { s.add(l); result.push(l); } }); info = "Duplikat dihapus."; }
+    else if (kind === "sortAsc") { result = [...lines].sort((a, b) => a.localeCompare(b)); info = "Diurutkan A→Z."; }
+    else if (kind === "sortDesc") { result = [...lines].sort((a, b) => b.localeCompare(a)); info = "Diurutkan Z→A."; }
+    else if (kind === "shuffle") { for (let i = result.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [result[i], result[j]] = [result[j], result[i]]; } info = "Urutan diacak."; }
+    else if (kind === "number") { result = lines.map((l, i) => `${i + 1}. ${l}`); info = "Baris dinomori."; }
+    else if (kind === "prefix") { result = lines.map(l => `[x] ${l}`); info = "Prefix ditambahkan."; }
+    else if (kind === "suffix") { result = lines.map(l => `${l} #`); info = "Suffix ditambahkan."; }
+    setBulkOutput(result.join("\n")); setBulkInfo(info);
+  };
+
+  const analyzeMedia = () => {
+    setMediaInfo(null); setDirectDownload(null);
+    const safe = sanitizeUrl(mediaUrl);
+    if (!safe) { setMediaInfo("⚠ URL tidak valid."); return; }
+    try {
+      const u = new URL(safe);
+      if (/\.(mp4|webm|mov|m4a|mp3|wav)$/i.test(u.pathname)) { setDirectDownload(safe); setMediaInfo("✓ Terlihat seperti berkas langsung. Klik unduh."); return; }
+      const host = u.hostname.replace(/^www\./, "");
+      if (["youtube.com", "youtu.be", "tiktok.com", "instagram.com", "twitter.com", "x.com"].includes(host))
+        setMediaInfo("ℹ Platform streaming besar tidak bisa diunduh langsung. Gunakan yt-dlp di terminal.");
+      else setMediaInfo("ℹ Link ini bukan berkas video langsung.");
+    } catch { setMediaInfo("⚠ URL tidak valid."); }
+  };
+
+  const generateAlias = () => {
+    const now = new Date(), pad = (n: number) => n.toString().padStart(2, "0");
+    const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+    const trimmed = baseEmail.trim();
+    if (trimmed && trimmed.includes("@")) {
+      const [local, domain] = trimmed.split("@");
+      setAliasEmail(`${local}+gp-${stamp}@${domain}`); setAliasInfo("Plus-address dari email utama.");
+    } else {
+      const rand = Math.random().toString(36).slice(2, 8);
+      setAliasEmail(`gp-${rand}-${stamp}@${aliasDomain}`); setAliasInfo("Alamat acak disiapkan.");
     }
+  };
+
+  const runTaxCalc = () => {
+    const base = parseFloat(sanitizeNumberString(taxBase || "")), r = parseFloat(sanitizeNumberString(taxRate || ""));
+    if (isNaN(base) || isNaN(r)) { setTaxOutput("⚠ Masukkan nilai yang valid."); return; }
+    const rp = r / 100;
+    if (taxMode === "exclusive") {
+      const pajak = base * rp, total = base + pajak;
+      setTaxOutput(`Dasar: ${formatCurrency(base)}\nPajak (${r}%): ${formatCurrency(pajak)}\nTotal: ${formatCurrency(total)}`);
+    } else {
+      const pajak = base - base / (1 + rp), dasar = base - pajak;
+      setTaxOutput(`Total (inklusif): ${formatCurrency(base)}\nTermasuk Pajak (${r}%): ${formatCurrency(pajak)}\nDasar sebelum pajak: ${formatCurrency(dasar)}`);
+    }
+  };
+
+  const runInterestCalc = () => {
+    const P = parseFloat(sanitizeNumberString(princ || "")), r = parseFloat(sanitizeNumberString(rate || "")) / 100, t = parseFloat(sanitizeNumberString(years || ""));
+    if (isNaN(P) || isNaN(r) || isNaN(t)) { setInterestOutput("⚠ Isi semua field dengan benar."); return; }
+    const simple = P * r * t, n = compoundPerYear > 0 ? compoundPerYear : 1;
+    const comp = P * Math.pow(1 + r / n, n * t) - P;
+    setInterestOutput(`Bunga sederhana: ${formatCurrency(simple)} | Akhir: ${formatCurrency(P + simple)}\nBunga majemuk (${n}x/tahun): ${formatCurrency(comp)} | Akhir: ${formatCurrency(P + comp)}`);
+  };
+
+  const runStats = () => {
+    const nums = (statsInput || "").split(/[^0-9.+\-eE]+/).map(s => s.trim()).filter(s => s !== "").map(s => Number(s)).filter(n => Number.isFinite(n));
+    if (!nums.length) { setStatsOutput("⚠ Tidak ada angka valid."); return; }
+    const sorted = [...nums].sort((a, b) => a - b), count = nums.length, sum = nums.reduce((a, b) => a + b, 0), mean = sum / count;
+    const median = count % 2 === 1 ? sorted[(count - 1) / 2] : (sorted[count / 2 - 1] + sorted[count / 2]) / 2;
+    const stdev = Math.sqrt(nums.reduce((a, x) => a + Math.pow(x - mean, 2), 0) / count);
+    setStatsOutput(`n = ${count}\nΣ = ${sum}\nMean = ${mean}\nMedian = ${median}\nMin = ${sorted[0]}\nMax = ${sorted[sorted.length - 1]}\nStdev = ${stdev.toFixed(4)}`);
+  };
+
+  const buildWa = () => {
+    const phone = sanitizePhone(waPhone), msg = sanitizeText(waMessage);
+    if (!phone) { setWaLink(""); return; }
+    setWaLink(`https://wa.me/${phone.replace(/^\+/, "")}${msg ? `?text=${encodeURIComponent(msg)}` : ""}`);
   };
 
   const generatePassword = () => {
     const length = Math.min(Math.max(pwLength, 6), 128);
-    const U = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // exclude easily confused chars
-    const L = "abcdefghijkmnopqrstuvwxyz"; // exclude l
-    const N = "23456789"; // exclude 0,1
-    const S = "!@#$%^&*()-_=+[]{};:,.?";
-
-    let pool = "";
-    const must: string[] = [];
-    if (pwUpper) {
-      pool += U;
-      must.push(U[cryptoRandom(U.length)]);
-    }
-    if (pwLower) {
-      pool += L;
-      must.push(L[cryptoRandom(L.length)]);
-    }
-    if (pwNumber) {
-      pool += N;
-      must.push(N[cryptoRandom(N.length)]);
-    }
-    if (pwSymbol) {
-      pool += S;
-      must.push(S[cryptoRandom(S.length)]);
-    }
-
-    if (!pool) {
-      setPwOutput("");
-      return;
-    }
-
-    const out: string[] = [...must];
-    while (out.length < length) {
-      out.push(pool[cryptoRandom(pool.length)]);
-    }
-    shuffleInPlace(out);
+    const U = "ABCDEFGHJKLMNPQRSTUVWXYZ", L = "abcdefghijkmnopqrstuvwxyz", N = "23456789", S = "!@#$%^&*()-_=+[]{};:,.?";
+    let pool = "", must: string[] = [];
+    if (pwUpper) { pool += U; must.push(U[cryptoRandom(U.length)]); }
+    if (pwLower) { pool += L; must.push(L[cryptoRandom(L.length)]); }
+    if (pwNumber) { pool += N; must.push(N[cryptoRandom(N.length)]); }
+    if (pwSymbol) { pool += S; must.push(S[cryptoRandom(S.length)]); }
+    if (!pool) { setPwOutput(""); return; }
+    const out = [...must];
+    while (out.length < length) out.push(pool[cryptoRandom(pool.length)]);
+    for (let i = out.length - 1; i > 0; i--) { const j = cryptoRandom(i + 1); [out[i], out[j]] = [out[j], out[i]]; }
     setPwOutput(out.join(""));
   };
 
-  const copyPw = async () => {
-    if (!pwOutput) return;
-    try {
-      await navigator.clipboard.writeText(pwOutput);
-      setBulkInfo("Password disalin ke clipboard.");
-    } catch {
-      setBulkInfo("Gagal menyalin password. Salin manual.");
-    }
-  };
-
-  const bytesToBase64 = (bytes: Uint8Array) => {
-    let bin = "";
-    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-    return btoa(bin);
-  };
-
+  const bytesToBase64 = (bytes: Uint8Array) => { let bin = ""; for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]); return btoa(bin); };
   const generateToken = () => {
-    const n = Math.min(Math.max(tokenBytes, 4), 128);
-    const bytes = new Uint8Array(n);
+    const n = Math.min(Math.max(tokenBytes, 4), 128), bytes = new Uint8Array(n);
     window.crypto.getRandomValues(bytes);
-    if (tokenFormat === "hex") {
-      setTokenOutput(Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join(""));
-    } else if (tokenFormat === "base64") {
-      setTokenOutput(bytesToBase64(bytes));
-    } else {
-      const b64 = bytesToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-      setTokenOutput(b64);
-    }
+    if (tokenFormat === "hex") setTokenOutput(Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join(""));
+    else if (tokenFormat === "base64") setTokenOutput(bytesToBase64(bytes));
+    else setTokenOutput(bytesToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""));
   };
 
-  const copyToken = async () => {
-    if (!tokenOutput) return;
-    try {
-      await navigator.clipboard.writeText(tokenOutput);
-      setBulkInfo("Token disalin ke clipboard.");
-    } catch {
-      setBulkInfo("Gagal menyalin token. Salin manual.");
-    }
-  };
-
-  const onMetaFilesChange = (fileList: FileList | null) => {
-    if (!fileList) return;
-    const arr = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
-    setMetaFiles(arr);
+  const copyToClipboard = async (text: string, setCb?: (m: string) => void) => {
+    try { await navigator.clipboard.writeText(text); setCb?.("✓ Disalin!"); }
+    catch { setCb?.("⚠ Gagal menyalin."); }
   };
 
   const runMetaClean = async () => {
@@ -2353,904 +1326,292 @@ const UtilityShelf: React.FC = () => {
     try {
       for (const file of metaFiles) {
         const dataUrl = await fileToDataUrl(file);
-        const img = new Image();
-        img.src = dataUrl;
-        await new Promise<void>((resolve, reject) => {
-          img.onload = () => resolve();
-          img.onerror = () => reject(new Error("Gagal memuat gambar."));
-        });
-
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("Canvas tidak tersedia.");
-        ctx.drawImage(img, 0, 0, img.width, img.height);
-
-        // pilih format keluaran sesuai asli (fallback ke PNG)
-        let mime = file.type && file.type.startsWith("image/") ? file.type : "image/png";
-        if (mime !== "image/jpeg" && mime !== "image/png" && mime !== "image/webp") {
-          mime = "image/png";
-        }
-
-        const blob = await new Promise<Blob | null>((resolve) => {
-          canvas.toBlob((b) => resolve(b), mime, mime === "image/jpeg" ? 0.92 : undefined);
-        });
+        const img = new Image(); img.src = dataUrl;
+        await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = () => rej(); });
+        const canvas = document.createElement("canvas"); canvas.width = img.width; canvas.height = img.height;
+        canvas.getContext("2d")!.drawImage(img, 0, 0);
+        let mime = file.type?.startsWith("image/") ? file.type : "image/png";
+        if (!["image/jpeg", "image/png", "image/webp"].includes(mime)) mime = "image/png";
+        const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(b => resolve(b), mime, mime === "image/jpeg" ? 0.92 : undefined));
         if (!blob) continue;
         const base = sanitizeFileName(file.name.replace(/\.[^.]+$/, "")) || "image";
         const ext = mime === "image/jpeg" ? "jpg" : mime === "image/png" ? "png" : "webp";
         downloadBlob(blob, `${base}-clean.${ext}`);
       }
-      setMetaInfo(`${metaFiles.length} gambar dibersihkan dari metadata dan diunduh.`);
-    } catch (err: any) {
-      console.error(err);
-      setMetaInfo(err?.message || "Gagal menghapus metadata gambar.");
-    }
+      setMetaInfo(`✓ ${metaFiles.length} gambar dibersihkan dari metadata.`);
+    } catch (err: any) { setMetaInfo("✗ " + (err?.message || "Gagal.")); }
   };
 
-  // use centralized sanitizer from utils
+  const TABS: { id: Tab; label: string; emoji: string }[] = [
+    { id: "json", label: "JSON & Base64", emoji: "{ }" },
+    { id: "bulk", label: "Bulk Teks", emoji: "📋" },
+    { id: "media", label: "Link Media", emoji: "🎬" },
+    { id: "alias", label: "Alias Email", emoji: "✉️" },
+    { id: "tax", label: "Kalk. Pajak", emoji: "🧾" },
+    { id: "interest", label: "Kalk. Bunga", emoji: "💰" },
+    { id: "stats", label: "Statistik", emoji: "📊" },
+    { id: "wa", label: "WA Link", emoji: "💬" },
+    { id: "pass", label: "Password & Token", emoji: "🔐" },
+    { id: "meta", label: "Hapus Metadata", emoji: "🧹" },
+  ];
 
-  const formatCurrency = (n: number) =>
-    new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(
-      n
-    );
-
-  const runTaxCalc = () => {
-    const base = parseFloat(sanitizeNumberString(taxBase || ""));
-    const r = parseFloat(sanitizeNumberString(taxRate || ""));
-    if (isNaN(base) || isNaN(r)) {
-      setTaxOutput("Masukkan nilai dasar dan tarif pajak yang valid.");
-      return;
-    }
-    const rp = r / 100;
-    if (taxMode === "exclusive") {
-      const pajak = base * rp;
-      const total = base + pajak;
-      setTaxOutput(
-        `Dasar: ${formatCurrency(base)}\nPajak (${r}%): ${formatCurrency(pajak)}\nTotal: ${formatCurrency(total)}`
-      );
-    } else {
-      const pajak = base - base / (1 + rp);
-      const dasar = base - pajak;
-      setTaxOutput(
-        `Total (inklusif): ${formatCurrency(base)}\nTermasuk Pajak (${r}%): ${formatCurrency(pajak)}\nDasar sebelum pajak: ${formatCurrency(dasar)}`
-      );
-    }
-  };
-
-  const runInterestCalc = () => {
-    const P = parseFloat(sanitizeNumberString(princ || ""));
-    const r = parseFloat(sanitizeNumberString(rate || "")) / 100;
-    const t = parseFloat(sanitizeNumberString(years || ""));
-    if (isNaN(P) || isNaN(r) || isNaN(t)) {
-      setInterestOutput("Isi pokok, bunga tahunan (%), dan durasi (tahun) dengan benar.");
-      return;
-    }
-    const simpleInterest = P * r * t;
-    const A_simple = P + simpleInterest;
-    const n = compoundPerYear > 0 ? compoundPerYear : 1;
-    const A_comp = P * Math.pow(1 + r / n, n * t);
-    const compInterest = A_comp - P;
-    setInterestOutput(
-      `Sederhana: Bunga = ${formatCurrency(simpleInterest)} | Akhir = ${formatCurrency(
-        A_simple
-      )}\nMajemuk (${n}x/tahun): Bunga = ${formatCurrency(compInterest)} | Akhir = ${formatCurrency(
-        A_comp
-      )}`
-    );
-  };
-
-  const runStats = () => {
-    const nums = (statsInput || "")
-      .split(/[^0-9.+\-eE]+/)
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .map((s) => Number(s))
-      .filter((n) => Number.isFinite(n));
-    if (!nums.length) {
-      setStatsOutput("Tidak ada angka valid yang ditemukan.");
-      return;
-    }
-    const sorted = [...nums].sort((a, b) => a - b);
-    const count = nums.length;
-    const sum = nums.reduce((a, b) => a + b, 0);
-    const mean = sum / count;
-    const median =
-      count % 2 === 1
-        ? sorted[(count - 1) / 2]
-        : (sorted[count / 2 - 1] + sorted[count / 2]) / 2;
-    const min = sorted[0];
-    const max = sorted[sorted.length - 1];
-    const variance =
-      nums.reduce((acc, x) => acc + Math.pow(x - mean, 2), 0) / count;
-    const stdev = Math.sqrt(variance);
-    setStatsOutput(
-      `n = ${count}\nΣ = ${sum}\nmean = ${mean}\nmedian = ${median}\nmin = ${min}\nmax = ${max}\nstdev(populasi) = ${stdev}`
-    );
-  };
-
-  const buildWa = () => {
-    const phone = sanitizePhone(waPhone);
-    const msg = sanitizeText(waMessage);
-    if (!phone) {
-      setWaLink("");
-      return;
-    }
-    const link = `https://wa.me/${phone.replace(/^\+/, "")}${
-      msg ? `?text=${encodeURIComponent(msg)}` : ""
-    }`;
-    setWaLink(link);
-  };
-
-  const copyWaLink = async () => {
-    if (!waLink) return;
-    try {
-      await navigator.clipboard.writeText(waLink);
-      setAliasInfo("Tautan WA disalin ke clipboard.");
-    } catch {
-      setAliasInfo("Gagal menyalin tautan. Salin manual.");
-    }
-  };
-  const toJsonPretty = () => {
-    try {
-      const obj = JSON.parse(textInput);
-      setJsonPretty(JSON.stringify(obj, null, 2));
-    } catch {
-      setJsonPretty("Input bukan JSON yang valid.");
-    }
-  };
-
-  const toBase64 = () => {
-    const safe = sanitizeText(textInput);
-    setBase64(btoa(unescape(encodeURIComponent(safe))));
-  };
-
-  const fromBase64 = () => {
-    try {
-      const decoded = decodeURIComponent(escape(atob(base64)));
-      setTextInput(sanitizeText(decoded));
-    } catch {
-      // ignore
-    }
-  };
-
-  const runBulkOp = (
-    kind:
-      | "unique"
-      | "sortAsc"
-      | "sortDesc"
-      | "shuffle"
-      | "number"
-      | "prefix"
-      | "suffix"
-  ) => {
-    if (!bulkInput.trim()) return;
-    const lines = bulkInput.split(/\r?\n/);
-    let resultLines = [...lines];
-    let info = "";
-
-    if (kind === "unique") {
-      const seen = new Set<string>();
-      resultLines = [];
-      for (const line of lines) {
-        if (!seen.has(line)) {
-          seen.add(line);
-          resultLines.push(line);
-        }
-      }
-      info = "Duplikat baris dihapus, urutan pertama dipertahankan.";
-    } else if (kind === "sortAsc" || kind === "sortDesc") {
-      resultLines = [...lines].sort((a, b) => a.localeCompare(b));
-      if (kind === "sortDesc") resultLines.reverse();
-      info = kind === "sortAsc" ? "Baris diurutkan A→Z." : "Baris diurutkan Z→A.";
-    } else if (kind === "shuffle") {
-      for (let i = resultLines.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [resultLines[i], resultLines[j]] = [resultLines[j], resultLines[i]];
-      }
-      info = "Urutan baris diacak.";
-    } else if (kind === "number") {
-      resultLines = lines.map((line, idx) => `${idx + 1}. ${line}`);
-      info = "Baris diberi penomoran.";
-    } else if (kind === "prefix") {
-      const prefix = "[x] ";
-      resultLines = lines.map((line) => `${prefix}${line}`);
-      info = "Prefix sederhana ditambahkan ke setiap baris.";
-    } else if (kind === "suffix") {
-      const suffix = " #";
-      resultLines = lines.map((line) => `${line}${suffix}`);
-      info = "Suffix sederhana ditambahkan ke setiap baris.";
-    }
-
-    setBulkOutput(resultLines.join("\n"));
-    setBulkInfo(info);
-  };
-
-  const analyzeMedia = () => {
-    setMediaInfo(null);
-    setDirectDownload(null);
-    const safe = sanitizeUrl(mediaUrl);
-    if (!safe) {
-      setMediaInfo("URL tidak valid atau tidak didukung. Hanya http/https yang diperbolehkan.");
-      return;
-    }
-
-    try {
-      const u = new URL(safe);
-      const lower = u.pathname.toLowerCase();
-      const isDirect = /\.(mp4|webm|mov|m4a|mp3|wav)$/i.test(lower);
-
-      if (isDirect) {
-        setDirectDownload(safe);
-        setMediaInfo(
-          "Link ini terlihat seperti berkas langsung. Anda bisa mengunduhnya dengan tombol di bawah."
-        );
-        return;
-      }
-
-      const host = u.hostname.replace(/^www\./, "");
-      if (
-        [
-          "youtube.com",
-          "youtu.be",
-          "tiktok.com",
-          "instagram.com",
-          "twitter.com",
-          "x.com",
-        ].includes(host)
-      ) {
-        setMediaInfo(
-          "Untuk menghormati kebijakan dan DRM masing-masing platform, Gamato Piranti tidak mengunduh langsung dari layanan streaming. Anda bisa menggunakan tool seperti yt-dlp di perangkat Anda dengan perintah: yt-dlp \"URL\"."
-        );
-      } else {
-        setMediaInfo(
-          "Link ini bukan berkas video langsung. Jika layanan menyediakan tombol unduh resmi, gunakan opsi tersebut untuk mengunduh."
-        );
-      }
-    } catch {
-      setMediaInfo("URL tidak valid. Periksa kembali penulisan link.");
-    }
-  };
-
-  const generateAlias = () => {
-    const trimmed = baseEmail.trim();
-    const now = new Date();
-    const pad = (n: number) => n.toString().padStart(2, "0");
-    const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(
-      now.getDate()
-    )}`;
-
-    let alias = "";
-    if (trimmed && trimmed.includes("@")) {
-      const [local, domain] = trimmed.split("@");
-      alias = `${local}+gp-${stamp}@${domain}`;
-      setAliasInfo("Alias bergaya plus-address dibuat dari email utama Anda.");
-    } else {
-      const rand = Math.random().toString(36).slice(2, 8);
-      alias = `gp-${rand}-${stamp}@${aliasDomain}`;
-      setAliasInfo(
-        "Alamat acak disiapkan. Gunakan dengan layanan temp-mail atau alias pilihan Anda."
-      );
-    }
-
-    setAliasEmail(alias);
-  };
-
-  const copyAlias = async () => {
-    if (!aliasEmail) return;
-    try {
-      await navigator.clipboard.writeText(aliasEmail);
-      setAliasInfo("Alamat disalin ke clipboard.");
-    } catch {
-      setAliasInfo("Gagal menyalin ke clipboard. Salin manual secara biasa.");
-    }
-  };
+  const PanelCard: React.FC<{ title: string; subtitle?: string; children: React.ReactNode }> = ({ title, subtitle, children }) => (
+    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+      <div>
+        <h3 className="font-bold text-slate-900 text-base">{title}</h3>
+        {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+      </div>
+      {children}
+    </div>
+  );
 
   return (
-    <Card
-      title="Rak Utilitas"
-      description="Kumpulan alat kecil untuk teks, data, link, dan email."
-    >
-      <div className="space-y-4 text-xs">
-        <div className="flex gap-2 overflow-x-auto rounded-xl bg-slate-50 p-1 font-medium text-slate-600 flex-nowrap whitespace-nowrap md:flex-wrap md:whitespace-normal md:overflow-x-visible snap-x snap-mandatory">
-          {(
-            [
-              ["json", "JSON & Base64"],
-              ["bulk", "Bulk teks/data"],
-              ["media", "Link & media"],
-              ["alias", "Alias email"],
-              ["tax", "Kalkulator pajak"],
-              ["interest", "Hitung bunga"],
-              ["stats", "Statistik sederhana"],
-              ["wa", "WA Link"],
-              ["pass", "Password & Token"],
-              ["meta", "Hapus metadata"],
-            ] as [
-              | "json"
-              | "bulk"
-              | "media"
-              | "alias"
-              | "tax"
-              | "interest"
-              | "stats"
-              | "wa"
-              | "pass"
-              | "meta",
-              string
-            ][]
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setTab(id)}
-              className={cn(
-                "whitespace-nowrap rounded-lg px-3 py-1.5 transition shrink-0 snap-start",
-                tab === id ? "bg-white shadow-sm" : "hover:bg-slate-100"
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+    <div className="space-y-5">
+      {/* Tab selector */}
+      <div className="flex flex-wrap gap-2">
+        {TABS.map(t => (
+          <button key={t.id} type="button" onClick={() => setTab(t.id)}
+            className={cn("flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all",
+              tab === t.id ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50")}>
+            <span>{t.emoji}</span><span>{t.label}</span>
+          </button>
+        ))}
+      </div>
 
-        {tab === "json" && (
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label>Input teks / JSON</Label>
-              <textarea
-                className="h-40 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-900 shadow-sm focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5"
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                placeholder="Tempel teks, JSON, atau data lainnya di sini."
-              />
+      {/* JSON & Base64 */}
+      {tab === "json" && (
+        <PanelCard title="JSON Formatter & Base64 Encoder" subtitle="Format JSON, encode/decode Base64">
+          <div className="grid lg:grid-cols-3 gap-4">
+            <div className="space-y-3">
+              <Textarea label="Input Teks / JSON" rows={8} value={textInput} onChange={e => setTextInput(e.target.value)} placeholder="Tempel JSON atau teks di sini…" />
+              <div className="flex gap-2">
+                <Btn onClick={toJsonPretty} variant="secondary" className="flex-1 text-xs">Format JSON</Btn>
+                <Btn onClick={toBase64} variant="secondary" className="flex-1 text-xs">→ Base64</Btn>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Textarea label="JSON Terformat" rows={8} value={jsonPretty} onChange={e => setJsonPretty(e.target.value)} placeholder="Hasil JSON rapi…" />
+              <Btn onClick={() => copyToClipboard(jsonPretty)} variant="secondary" className="w-full text-xs">📋 Salin JSON</Btn>
+            </div>
+            <div className="space-y-3">
+              <Textarea label="Base64" rows={5} value={base64} onChange={e => setBase64(e.target.value)} placeholder="Base64 encode/decode…" />
+              <div className="flex gap-2">
+                <Btn onClick={fromBase64} variant="secondary" className="flex-1 text-xs">← Dari Base64</Btn>
+                <Btn onClick={() => copyToClipboard(base64)} variant="secondary" className="flex-1 text-xs">📋 Salin</Btn>
+              </div>
+            </div>
+          </div>
+        </PanelCard>
+      )}
+
+      {/* Bulk */}
+      {tab === "bulk" && (
+        <PanelCard title="Bulk Teks & Data Lab" subtitle="Manipulasi daftar teks — email, ID, nama, dll.">
+          <div className="grid lg:grid-cols-2 gap-5">
+            <div className="space-y-3">
+              <Textarea label="Input (satu item per baris)" rows={10} value={bulkInput} onChange={e => setBulkInput(e.target.value)} placeholder="item1&#10;item2&#10;item3" />
               <div className="flex flex-wrap gap-2">
-                <Button variant="ghost" onClick={toJsonPretty}>
-                  Rapikan JSON
-                </Button>
-                <Button variant="ghost" onClick={toBase64}>
-                  Ke Base64
-                </Button>
+                {[["unique", "Hapus Duplikat"], ["sortAsc", "Sort A→Z"], ["sortDesc", "Sort Z→A"], ["shuffle", "Acak"], ["number", "Nomori"], ["prefix", "Tambah Prefix"], ["suffix", "Tambah Suffix"]].map(([k, l]) => (
+                  <Btn key={k} onClick={() => runBulkOp(k as any)} variant="secondary" className="text-xs py-1.5">{l}</Btn>
+                ))}
               </div>
+              {bulkInfo && <p className="text-xs text-green-600 font-medium">✓ {bulkInfo}</p>}
             </div>
-            <div className="space-y-2">
-              <Label>JSON rapi</Label>
-              <textarea
-                className="h-40 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-900 shadow-sm focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5"
-                value={jsonPretty}
-                onChange={(e) => setJsonPretty(e.target.value)}
-                placeholder="Hasil JSON yang sudah diformat akan muncul di sini."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Base64</Label>
-              <textarea
-                className="h-24 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-900 shadow-sm focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5"
-                value={base64}
-                onChange={(e) => setBase64(e.target.value)}
-                placeholder="Encode/decode data teks ke Base64."
-              />
-              <div className="flex justify-between gap-2">
-                <Button variant="ghost" onClick={fromBase64} className="flex-1">
-                  Dari Base64
-                </Button>
-                <div className="flex-1 text-[10px] text-slate-500">
-                  Cocok untuk testing API, token, dan konfigurasi ringan.
-                </div>
-              </div>
+            <div className="space-y-3">
+              <Textarea label="Hasil" rows={10} value={bulkOutput} onChange={e => setBulkOutput(e.target.value)} placeholder="Hasil akan tampil di sini…" />
+              <Btn onClick={() => copyToClipboard(bulkOutput)} variant="secondary" className="w-full text-xs">📋 Salin Hasil</Btn>
             </div>
           </div>
-        )}
+        </PanelCard>
+      )}
 
-        {tab === "bulk" && (
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-3">
-            <div className="flex items-center justify-between">
-              <Label>Bulk Text & Data Lab</Label>
-              <span className="text-[10px] text-slate-400">List, ID, email, dll.</span>
-            </div>
-            <textarea
-              className="h-28 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-900 shadow-sm focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5"
-              value={bulkInput}
-              onChange={(e) => setBulkInput(e.target.value)}
-              placeholder="Satu item per baris. Contoh: daftar email, ID, atau nama."
-            />
-            <div className="flex flex-wrap gap-1.5">
-              <Button variant="ghost" onClick={() => runBulkOp("unique")}>
-                Hapus duplikat
-              </Button>
-              <Button variant="ghost" onClick={() => runBulkOp("sortAsc")}>
-                Urut A→Z
-              </Button>
-              <Button variant="ghost" onClick={() => runBulkOp("sortDesc")}>
-                Urut Z→A
-              </Button>
-              <Button variant="ghost" onClick={() => runBulkOp("shuffle")}>
-                Acak
-              </Button>
-              <Button variant="ghost" onClick={() => runBulkOp("number")}>
-                Nomori baris
-              </Button>
-              <Button variant="ghost" onClick={() => runBulkOp("prefix")}>
-                Tambah prefix
-              </Button>
-              <Button variant="ghost" onClick={() => runBulkOp("suffix")}>
-                Tambah suffix
-              </Button>
-            </div>
-            <textarea
-              className="h-24 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-900 shadow-sm focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5"
-              value={bulkOutput}
-              onChange={(e) => setBulkOutput(e.target.value)}
-              placeholder="Hasil transformasi akan muncul di sini."
-            />
-            {bulkInfo && (
-              <p className="text-[10px] text-slate-500">{bulkInfo}</p>
-            )}
-          </div>
-        )}
-
-        {tab === "media" && (
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-3">
-            <Label>Helper link & media</Label>
-            <input
-              type="url"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-900 shadow-sm focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5"
-              value={mediaUrl}
-              onChange={(e) => setMediaUrl(e.target.value)}
-              placeholder="Tempel link video/file (mp4, webm, dll)."
-            />
-            <Button variant="ghost" onClick={analyzeMedia}>
-              Analisis link
-            </Button>
-            {mediaInfo && (
-              <p className="text-[10px] text-slate-600">{mediaInfo}</p>
-            )}
+      {/* Media */}
+      {tab === "media" && (
+        <PanelCard title="Helper Link & Media" subtitle="Analisis link video/file untuk unduhan langsung">
+          <div className="space-y-4 max-w-xl">
+            <Input label="URL Video / File" type="url" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} placeholder="https://example.com/video.mp4" />
+            <Btn onClick={analyzeMedia} variant="secondary">🔍 Analisis Link</Btn>
+            {mediaInfo && <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700">{mediaInfo}</div>}
             {directDownload && (
-              <a
-                href={directDownload}
-                download
-                className="mt-1 inline-flex justify-between rounded-xl border border-slate-200 bg-slate-900 px-3 py-1.5 text-[10px] font-medium text-slate-50 shadow-sm hover:bg-slate-800"
-              >
-                <span>Unduh langsung</span>
-                <span className="text-slate-300">Buka di tab baru jika gagal</span>
+              <a href={directDownload} download className="flex items-center justify-between gap-3 bg-slate-900 text-white rounded-xl px-5 py-3 font-semibold hover:bg-slate-800 transition-colors">
+                <span>⬇ Unduh Langsung</span>
+                <span className="text-xs text-slate-400">Buka tab baru jika gagal</span>
               </a>
             )}
-            <p className="mt-2 text-[10px] text-slate-500">
-              Untuk platform streaming besar, gunakan tool resmi mereka atau utilitas baris perintah seperti <code className="rounded bg-slate-100 px-1">yt-dlp "URL"</code> di perangkat Anda.
-            </p>
+            <p className="text-xs text-slate-400 bg-slate-50 rounded-xl p-3">Untuk YouTube/TikTok/Instagram, gunakan: <code className="bg-slate-200 rounded px-1">yt-dlp "URL"</code> di terminal.</p>
           </div>
-        )}
+        </PanelCard>
+      )}
 
-        {tab === "alias" && (
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-3">
-            <Label>Alias & temp email planner</Label>
-            <input
-              type="email"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-900 shadow-sm focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5"
-              value={baseEmail}
-              onChange={(e) => setBaseEmail(sanitizeText(e.target.value))}
-              placeholder="Email utama (opsional, untuk plus-address)"
-            />
-            <div className="grid gap-2 text-[11px] md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-              <Input
-                label="Domain alternatif"
-                value={aliasDomain}
-                onChange={(e) => setAliasDomain(sanitizeText(e.target.value))}
-                placeholder="contoh: inbox.mydomain.com"
-              />
+      {/* Alias */}
+      {tab === "alias" && (
+        <PanelCard title="Alias & Temp Email Planner" subtitle="Buat alamat email alternatif untuk pendaftaran">
+          <div className="space-y-4 max-w-lg">
+            <Input label="Email Utama (opsional — untuk plus-address)" type="email" value={baseEmail} onChange={e => setBaseEmail(sanitizeText(e.target.value))} placeholder="nama@gmail.com" />
+            <Input label="Domain Alternatif" value={aliasDomain} onChange={e => setAliasDomain(sanitizeText(e.target.value))} placeholder="tempmail.com" />
+            <div className="flex gap-3">
+              <Btn onClick={generateAlias} className="flex-1">🎲 Buat Alamat</Btn>
+              <Btn onClick={() => copyToClipboard(aliasEmail || "", setAliasInfo)} disabled={!aliasEmail} variant="secondary" className="flex-1">📋 Salin</Btn>
             </div>
-            <div className="flex gap-2">
-              <Button variant="ghost" onClick={generateAlias} className="flex-1">
-                Buat alamat
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={copyAlias}
-                disabled={!aliasEmail}
-                className="flex-1"
-              >
-                Salin
-              </Button>
-            </div>
-            <div className="rounded-xl bg-slate-900 px-3 py-2 text-[11px] text-slate-50">
-              <p className="text-[10px] uppercase tracking-[0.16em] text-slate-400">
-                Alamat yang disiapkan
-              </p>
-              <p className="mt-1 break-all text-[11px]">
-                {aliasEmail || "Belum ada. Klik \"Buat alamat\" untuk menghasilkan."}
-              </p>
-            </div>
-            {aliasInfo && (
-              <p className="text-[10px] text-slate-500">{aliasInfo}</p>
-            )}
-            <p className="mt-1 text-[10px] text-slate-500">
-              Gamato Piranti tidak membuat inbox otomatis. Gunakan alamat ini bersama layanan temp-mail, alias, atau forwarder pilihan Anda.
-            </p>
+            {aliasEmail && <div className="bg-slate-900 rounded-xl px-4 py-3 font-mono text-sm text-emerald-400 break-all">{aliasEmail}</div>}
+            {aliasInfo && <p className="text-xs text-slate-500">{aliasInfo}</p>}
+            <p className="text-xs text-slate-400">Gamato Piranti tidak membuat inbox. Gunakan bersama layanan temp-mail atau forwarder pilihan Anda.</p>
           </div>
-        )}
+        </PanelCard>
+      )}
 
-        {tab === "tax" && (
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-3">
-            <div className="flex items-center justify-between">
-              <Label>Kalkulator Pajak</Label>
-              <span className="text-[10px] text-slate-400">Eksklusif/Inklusif</span>
+      {/* Tax */}
+      {tab === "tax" && (
+        <PanelCard title="Kalkulator Pajak" subtitle="Hitung PPN eksklusif atau inklusif">
+          <div className="space-y-4 max-w-xl">
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Nilai Dasar (Rp)" value={taxBase} onChange={e => setTaxBase(e.target.value)} placeholder="1000000" />
+              <Input label="Tarif Pajak (%)" value={taxRate} onChange={e => setTaxRate(e.target.value)} placeholder="11" />
             </div>
-            <div className="grid gap-3 md:grid-cols-3">
-              <Input
-                label="Nilai dasar (Rp)"
-                value={taxBase}
-                onChange={(e) => setTaxBase(e.target.value)}
-                placeholder="contoh: 1000000"
-              />
-              <Input
-                label="Tarif pajak (%)"
-                value={taxRate}
-                onChange={(e) => setTaxRate(e.target.value)}
-                placeholder="contoh: 11"
-              />
-              <div className="space-y-1.5">
-                <Label>Mode hitung</Label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setTaxMode("exclusive")}
-                    className={cn(
-                      "rounded-full px-2 py-0.5",
-                      taxMode === "exclusive"
-                        ? "bg-slate-900 text-slate-50"
-                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                    )}
-                  >
-                    Eksklusif (belum termasuk pajak)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTaxMode("inclusive")}
-                    className={cn(
-                      "rounded-full px-2 py-0.5",
-                      taxMode === "inclusive"
-                        ? "bg-slate-900 text-slate-50"
-                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                    )}
-                  >
-                    Inklusif (sudah termasuk pajak)
-                  </button>
-                </div>
+            <div>
+              <Label>Mode Perhitungan</Label>
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                {[["exclusive", "Eksklusif (belum termasuk pajak)"], ["inclusive", "Inklusif (sudah termasuk pajak)"]].map(([v, l]) => (
+                  <button key={v} type="button" onClick={() => setTaxMode(v as any)}
+                    className={cn("py-2.5 rounded-xl text-sm font-semibold border-2 transition-all",
+                      taxMode === v ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-slate-300")}>{l}</button>
+                ))}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" onClick={runTaxCalc}>Hitung</Button>
-              <p className="text-[10px] text-slate-500">
-                Hasil memakai format mata uang IDR.
-              </p>
-            </div>
-            {taxOutput && (
-              <pre className="whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-[11px] text-slate-800">
-                {taxOutput}
-              </pre>
-            )}
+            <Btn onClick={runTaxCalc} className="w-full">🧾 Hitung Pajak</Btn>
+            {taxOutput && <pre className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 whitespace-pre-wrap">{taxOutput}</pre>}
           </div>
-        )}
+        </PanelCard>
+      )}
 
-        {tab === "interest" && (
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-3">
-            <div className="flex items-center justify-between">
-              <Label>Hitung Bunga</Label>
-              <span className="text-[10px] text-slate-400">Sederhana & majemuk</span>
-            </div>
-            <div className="grid gap-3 md:grid-cols-4">
-              <Input
-                label="Pokok (Rp)"
-                value={princ}
-                onChange={(e) => setPrinc(e.target.value)}
-                placeholder="contoh: 5000000"
-              />
-              <Input
-                label="Bunga tahunan (%)"
-                value={rate}
-                onChange={(e) => setRate(e.target.value)}
-                placeholder="contoh: 10"
-              />
-              <Input
-                label="Durasi (tahun)"
-                value={years}
-                onChange={(e) => setYears(e.target.value)}
-                placeholder="contoh: 3"
-              />
-              <Select
-                label="Frekuensi majemuk"
-                value={compoundPerYear}
-                onChange={(e) => setCompoundPerYear(parseInt(e.target.value, 10) || 1)}
-              >
+      {/* Interest */}
+      {tab === "interest" && (
+        <PanelCard title="Kalkulator Bunga" subtitle="Hitung bunga sederhana & majemuk">
+          <div className="space-y-4 max-w-xl">
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Pokok (Rp)" value={princ} onChange={e => setPrinc(e.target.value)} placeholder="5000000" />
+              <Input label="Bunga Tahunan (%)" value={rate} onChange={e => setRate(e.target.value)} placeholder="10" />
+              <Input label="Durasi (tahun)" value={years} onChange={e => setYears(e.target.value)} placeholder="3" />
+              <Select label="Frekuensi Majemuk" value={compoundPerYear} onChange={e => setCompoundPerYear(parseInt(e.target.value))}>
                 <option value={1}>Tahunan (1x)</option>
                 <option value={2}>Semesteran (2x)</option>
                 <option value={4}>Kuartalan (4x)</option>
                 <option value={12}>Bulanan (12x)</option>
               </Select>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" onClick={runInterestCalc}>Hitung</Button>
-              <p className="text-[10px] text-slate-500">Nilai indikatif.</p>
-            </div>
-            {interestOutput && (
-              <pre className="whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-[11px] text-slate-800">
-                {interestOutput}
-              </pre>
-            )}
+            <Btn onClick={runInterestCalc} className="w-full">💰 Hitung Bunga</Btn>
+            {interestOutput && <pre className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 whitespace-pre-wrap">{interestOutput}</pre>}
           </div>
-        )}
+        </PanelCard>
+      )}
 
-        {tab === "stats" && (
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-3">
-            <div className="flex items-center justify-between">
-              <Label>Statistik Sederhana</Label>
-              <span className="text-[10px] text-slate-400">mean, median, min, max</span>
-            </div>
-            <Textarea
-              rows={5}
-              value={statsInput}
-              onChange={(e) => setStatsInput(e.target.value)}
-              placeholder="Tempel angka dipisah spasi, koma, atau baris baru."
-            />
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" onClick={runStats}>Analisis</Button>
-              <p className="text-[10px] text-slate-500">
-                Hanya angka yang dihitung, karakter lain diabaikan.
-              </p>
-            </div>
-            {statsOutput && (
-              <pre className="whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-[11px] text-slate-800">
-                {statsOutput}
-              </pre>
-            )}
+      {/* Stats */}
+      {tab === "stats" && (
+        <PanelCard title="Statistik Sederhana" subtitle="Mean, median, min, max, standar deviasi">
+          <div className="space-y-4 max-w-lg">
+            <Textarea label="Angka (pisahkan dengan spasi, koma, atau baris baru)" rows={5} value={statsInput} onChange={e => setStatsInput(e.target.value)} placeholder="10 20 30 40 50&#10;atau&#10;1, 2, 3, 4, 5" />
+            <Btn onClick={runStats} className="w-full">📊 Analisis</Btn>
+            {statsOutput && <pre className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 whitespace-pre-wrap font-mono">{statsOutput}</pre>}
           </div>
-        )}
+        </PanelCard>
+      )}
 
-        {tab === "wa" && (
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-3">
-            <div className="flex items-center justify-between">
-              <Label>WhatsApp Direct Link</Label>
-              <span className="text-[10px] text-slate-400">Tanpa menyimpan kontak</span>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-2">
-              <Input
-                label="Nomor telepon (dengan kode negara, mis. +62...)"
-                value={waPhone}
-                onChange={(e) => setWaPhone(sanitizePhone(e.target.value))}
-                placeholder="Contoh: +62812xxxxxxx"
-              />
-
-              <div className="space-y-1.5">
-                <Label>Template pesan</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      const name = prompt('Nama penerima (opsional):') || '';
-                      const safe = sanitizeText(name);
-                      setWaMessage(
-                        (safe ? `Halo ${safe}, ` : 'Halo, ') +
-                          'apa kabar? Saya ingin menghubungi terkait sesuatu.'
-                      );
-                    }}
-                  >
-                    Salam
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      const inv = prompt('Nomor invoice:') || '';
-                      const amt = prompt('Jumlah (opsional):') || '';
-                      const safeInv = sanitizeText(inv);
-                      const safeAmt = sanitizeText(amt);
-                      setWaMessage(
-                        `Halo, ini tindak lanjut terkait invoice ${safeInv}. ${
-                          safeAmt ? `Total ${safeAmt}. ` : ''
-                        }Mohon konfirmasi penerimaan atau bila ada pertanyaan.`
-                      );
-                    }}
-                  >
-                    Follow-up
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      const inv = prompt('Nomor invoice/kode transaksi:') || '';
-                      const safeInv = sanitizeText(inv);
-                      setWaMessage(
-                        `Halo, pembayaran untuk ${safeInv} telah kami terima. Terima kasih! Jika ada yang perlu dibantu lagi, kabari ya.`
-                      );
-                    }}
-                  >
-                    Konfirmasi bayar
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      const addr = prompt('Alamat/tautan lokasi:') || '';
-                      const time = prompt('Estimasi waktu (opsional):') || '';
-                      const safeAddr = sanitizeText(addr);
-                      const safeTime = sanitizeText(time);
-                      setWaMessage(
-                        `Halo, berikut alamat/lokasi tujuan: ${safeAddr}. ${
-                          safeTime ? `Estimasi waktu: ${safeTime}. ` : ''
-                        }Terima kasih.`
-                      );
-                    }}
-                  >
-                    Kirim alamat
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      const date = prompt('Tanggal (mis. 12/03/2026):') || '';
-                      const hour = prompt('Jam (opsional):') || '';
-                      const topic = prompt('Topik/agenda (opsional):') || '';
-                      const safeDate = sanitizeText(date);
-                      const safeHour = sanitizeText(hour);
-                      const safeTopic = sanitizeText(topic);
-                      setWaMessage(
-                        `Halo, mengingatkan jadwal pada ${safeDate}${
-                          safeHour ? ` pukul ${safeHour}` : ''
-                        }${safeTopic ? ` untuk ${safeTopic}` : ''}. Terima kasih.`
-                      );
-                    }}
-                  >
-                    Reminder
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <Textarea
-              label="Pesan (opsional)"
-              rows={3}
-              value={waMessage}
-              onChange={(e) => setWaMessage(sanitizeText(e.target.value))}
-              placeholder="Tulis pesan Anda di sini, atau gunakan template di atas."
-            />
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" onClick={buildWa}>Buat tautan</Button>
-              <Button variant="ghost" onClick={copyWaLink} disabled={!waLink}>
-                Salin tautan
-              </Button>
+      {/* WA */}
+      {tab === "wa" && (
+        <PanelCard title="WhatsApp Direct Link" subtitle="Buka chat WA tanpa menyimpan kontak">
+          <div className="space-y-4 max-w-lg">
+            <Input label="Nomor Telepon (dengan kode negara)" value={waPhone} onChange={e => setWaPhone(sanitizePhone(e.target.value))} placeholder="+62812xxxxxxx" />
+            <Textarea label="Pesan (opsional)" rows={4} value={waMessage} onChange={e => setWaMessage(sanitizeText(e.target.value))} placeholder="Pesan yang akan muncul otomatis di chat…" />
+            <div className="flex gap-3">
+              <Btn onClick={buildWa} className="flex-1">🔗 Buat Link WA</Btn>
+              {waLink && <Btn onClick={() => copyToClipboard(waLink, setAliasInfo)} variant="secondary" className="flex-1">📋 Salin Link</Btn>}
             </div>
             {waLink && (
-              <a
-                href={waLink}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex justify-between rounded-xl border border-slate-200 bg-slate-900 px-3 py-1.5 text-[10px] font-medium text-slate-50 shadow-sm hover:bg-slate-800"
-              >
-                <span>Buka chat</span>
-                <span className="text-slate-300">wa.me</span>
-              </a>
+              <div className="space-y-2">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-mono text-xs text-slate-700 break-all">{waLink}</div>
+                <a href={waLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-green-500 text-white rounded-xl py-3 font-semibold hover:bg-green-600 transition-colors">
+                  💬 Buka di WhatsApp
+                </a>
+              </div>
             )}
           </div>
-        )}
+        </PanelCard>
+      )}
 
-        {tab === "pass" && (
-          <div className="space-y-4 rounded-2xl border border-slate-200 bg-white/70 p-3">
-            <div className="flex items-center justify-between">
-              <Label>Password & Token Generator</Label>
-              <span className="text-[10px] text-slate-400">Web Crypto aman</span>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-3">
-              <Input
-                label="Panjang password"
-                type="number"
-                min={6}
-                max={128}
-                value={pwLength}
-                onChange={(e) => setPwLength(parseInt(e.target.value, 10) || 16)}
-              />
-              <div className="space-y-1.5">
-                <Label>Karakter yang digunakan</Label>
-                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
-                  <label className="inline-flex items-center gap-1">
-                    <input type="checkbox" checked={pwUpper} onChange={(e) => setPwUpper(e.target.checked)} />
-                    <span>Huruf besar</span>
-                  </label>
-                  <label className="inline-flex items-center gap-1">
-                    <input type="checkbox" checked={pwLower} onChange={(e) => setPwLower(e.target.checked)} />
-                    <span>Huruf kecil</span>
-                  </label>
-                  <label className="inline-flex items-center gap-1">
-                    <input type="checkbox" checked={pwNumber} onChange={(e) => setPwNumber(e.target.checked)} />
-                    <span>Angka</span>
-                  </label>
-                  <label className="inline-flex items-center gap-1">
-                    <input type="checkbox" checked={pwSymbol} onChange={(e) => setPwSymbol(e.target.checked)} />
-                    <span>Simbol</span>
-                  </label>
+      {/* Password & Token */}
+      {tab === "pass" && (
+        <PanelCard title="Password & Token Generator" subtitle="Berbasis Web Crypto API — aman dan acak">
+          <div className="grid lg:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <p className="text-sm font-bold text-slate-700">🔐 Password Generator</p>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Panjang Password" type="number" min={6} max={128} value={pwLength} onChange={e => setPwLength(parseInt(e.target.value) || 16)} />
+                <div>
+                  <Label>Karakter</Label>
+                  <div className="mt-2 space-y-1.5">
+                    {[["pwUpper", "Huruf Besar", pwUpper, setPwUpper], ["pwLower", "Huruf Kecil", pwLower, setPwLower], ["pwNumber", "Angka", pwNumber, setPwNumber], ["pwSymbol", "Simbol", pwSymbol, setPwSymbol]].map(([id, l, v, s]: any) => (
+                      <label key={id} className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+                        <input type="checkbox" checked={v} onChange={e => s(e.target.checked)} className="rounded accent-blue-600" />{l}
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div className="flex items-end gap-2">
-                <Button variant="ghost" onClick={generatePassword} className="flex-1">Buat password</Button>
-                <Button variant="ghost" onClick={copyPw} disabled={!pwOutput} className="flex-1">Salin</Button>
-              </div>
-            </div>
-
-            <Input
-              label="Password"
-              value={pwOutput}
-              onChange={(e) => setPwOutput(e.target.value)}
-              placeholder="Klik 'Buat password' untuk membuat kata sandi acak."
-            />
-
-            <div className="grid gap-3 md:grid-cols-3">
-              <Input
-                label="Panjang token (byte)"
-                type="number"
-                min={4}
-                max={128}
-                value={tokenBytes}
-                onChange={(e) => setTokenBytes(parseInt(e.target.value, 10) || 32)}
-              />
-              <Select
-                label="Format token"
-                value={tokenFormat}
-                onChange={(e) => setTokenFormat((e.target.value as any) || "hex")}
-              >
-                <option value="hex">Hex</option>
-                <option value="base64">Base64</option>
-                <option value="urlsafe">URL-safe Base64</option>
-              </Select>
-              <div className="flex items-end gap-2">
-                <Button variant="ghost" onClick={generateToken} className="flex-1">Buat token</Button>
-                <Button variant="ghost" onClick={copyToken} disabled={!tokenOutput} className="flex-1">Salin</Button>
-              </div>
-            </div>
-
-            <Textarea
-              label="Token"
-              rows={3}
-              value={tokenOutput}
-              onChange={(e) => setTokenOutput(e.target.value)}
-              placeholder="Klik 'Buat token' untuk menghasilkan token acak."
-            />
-
-            <p className="text-[10px] text-slate-500">
-              Disarankan menyimpan password/token secara aman. Gamato Piranti tidak mengirimkan data ini ke server mana pun.
-            </p>
-          </div>
-        )}
-
-        {tab === "meta" && (
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-3">
-            <div className="flex items-center justify-between">
-              <Label>Hapus Metadata Gambar</Label>
-              <span className="text-[10px] text-slate-400">Privacy tool</span>
-            </div>
-            <div className="space-y-2">
-              <Label>Pilih gambar</Label>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) => onMetaFilesChange(e.target.files)}
-                className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-900 shadow-sm focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-slate-50 hover:file:bg-slate-800"
-              />
-              {metaFiles.length > 0 && (
-                <p className="text-[11px] text-slate-600">{metaFiles.length} gambar dipilih.</p>
+              <Btn onClick={generatePassword} className="w-full">🎲 Buat Password</Btn>
+              {pwOutput && (
+                <div className="space-y-2">
+                  <div className="bg-slate-900 text-green-400 font-mono text-sm rounded-xl px-4 py-3 break-all">{pwOutput}</div>
+                  <Btn onClick={() => copyToClipboard(pwOutput)} variant="secondary" className="w-full">📋 Salin Password</Btn>
+                </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" onClick={runMetaClean} disabled={!metaFiles.length}>Bersihkan metadata</Button>
-              <p className="text-[10px] text-slate-500">EXIF/metadata dihapus dengan re-encode via canvas, gambar diunduh ulang.</p>
+            <div className="space-y-4">
+              <p className="text-sm font-bold text-slate-700">🔑 Token Generator</p>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Panjang (byte)" type="number" min={4} max={128} value={tokenBytes} onChange={e => setTokenBytes(parseInt(e.target.value) || 32)} />
+                <Select label="Format" value={tokenFormat} onChange={e => setTokenFormat(e.target.value as any)}>
+                  <option value="hex">Hex</option>
+                  <option value="base64">Base64</option>
+                  <option value="urlsafe">URL-safe Base64</option>
+                </Select>
+              </div>
+              <Btn onClick={generateToken} className="w-full">🎲 Buat Token</Btn>
+              {tokenOutput && (
+                <div className="space-y-2">
+                  <div className="bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl px-4 py-3 break-all">{tokenOutput}</div>
+                  <Btn onClick={() => copyToClipboard(tokenOutput)} variant="secondary" className="w-full">📋 Salin Token</Btn>
+                </div>
+              )}
             </div>
-            {metaInfo && (
-              <p className="text-[10px] text-slate-600">{metaInfo}</p>
-            )}
           </div>
-        )}
-      </div>
-    </Card>
+          <p className="text-xs text-slate-400 border-t border-slate-100 pt-4">Gamato Piranti tidak mengirim password/token ke server mana pun. Simpan dengan aman di password manager.</p>
+        </PanelCard>
+      )}
+
+      {/* Meta */}
+      {tab === "meta" && (
+        <PanelCard title="Hapus Metadata Gambar" subtitle="EXIF, GPS, dan data sensitif lainnya dihapus via re-encode canvas">
+          <div className="space-y-4 max-w-lg">
+            <Dropzone onFiles={f => setMetaFiles(f.filter(f2 => f2.type.startsWith("image/")))} accept="image/*" label="Drop gambar di sini" sublabel="Bisa pilih beberapa sekaligus" icon="🖼" />
+            {metaFiles.length > 0 && (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+                <p className="text-sm font-semibold text-slate-700">{metaFiles.length} gambar dipilih</p>
+                <ul className="mt-2 space-y-1">
+                  {metaFiles.map((f, i) => <li key={i} className="text-xs text-slate-500 truncate">• {f.name} ({(f.size / 1024).toFixed(0)} KB)</li>)}
+                </ul>
+              </div>
+            )}
+            <Btn onClick={runMetaClean} disabled={!metaFiles.length} className="w-full">🧹 Bersihkan Metadata</Btn>
+            {metaInfo && <div className={cn("text-sm rounded-xl px-4 py-3 border", metaInfo.startsWith("✓") ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200")}>{metaInfo}</div>}
+            <p className="text-xs text-slate-400">File diunduh ulang — tanpa metadata EXIF. Tidak ada yang dikirim ke server.</p>
+          </div>
+        </PanelCard>
+      )}
+    </div>
   );
 };
 
-// ---------- Static Pages: Privacy & Terms ----------
+// ─── Static Pages ─────────────────────────────────────────────────────────────
 
 const PolicySection: React.FC<{ num: string; title: string; children: React.ReactNode }> = ({ num, title, children }) => (
   <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-3">
@@ -3263,154 +1624,82 @@ const PolicySection: React.FC<{ num: string; title: string; children: React.Reac
 );
 
 const PrivacyPage: React.FC = () => (
-  <div className="max-w-3xl mx-auto space-y-6">
+  <div className="max-w-3xl mx-auto space-y-5">
     <div className="text-center space-y-3 pb-2">
-      <span className="inline-block text-[10px] font-bold uppercase tracking-[0.2em] text-blue-600 bg-blue-50 px-3 py-1 rounded-full">Kebijakan</span>
+      <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full">Kebijakan</span>
       <h1 className="text-3xl font-bold text-slate-900">Privacy Policy</h1>
-      <p className="text-slate-500 text-sm">Gamato Piranti · Terakhir diperbarui: 2 Maret 2026</p>
-      <p className="text-slate-600 text-sm max-w-xl mx-auto leading-relaxed">
-        Di Gamato Piranti, privasi pengunjung adalah prioritas utama kami. Dokumen ini menjelaskan jenis informasi yang kami kumpulkan dan bagaimana kami menggunakannya.
-      </p>
+      <p className="text-slate-400 text-sm">Gamato Piranti · Terakhir diperbarui: 2 Maret 2026</p>
     </div>
     <PolicySection num="1" title="Informasi yang Kami Kumpulkan">
-      <p>Sebagai Digital Tool Studio, sebagian besar alat kami bekerja di sisi klien (browser). Kami tidak secara sengaja mengumpulkan data pribadi sensitif kecuali jika Anda memberikannya secara sukarela melalui formulir kontak.</p>
+      <p>Sebagai Digital Tool Studio, sebagian besar alat kami bekerja di sisi klien (browser). Kami tidak mengumpulkan data pribadi sensitif kecuali Anda memberikannya secara sukarela.</p>
     </PolicySection>
     <PolicySection num="2" title="Log Files & Analytics">
-      <p>Gamato Piranti mengikuti prosedur standar penggunaan file log. Informasi yang dikumpulkan meliputi alamat IP, jenis browser, ISP, stempel waktu, serta halaman rujukan. Ini dilakukan melalui infrastruktur Vercel untuk analisis performa web.</p>
+      <p>Kami menggunakan log standar melalui infrastruktur Vercel yang mencakup alamat IP, jenis browser, ISP, dan stempel waktu untuk analisis performa web.</p>
     </PolicySection>
     <PolicySection num="3" title="Keamanan Data (WUG Secure Standard)">
-      <p>Kami menerapkan sistem keamanan WUG Secure System untuk memastikan bahwa setiap input data pada tools kami diproses dengan enkripsi standar dan tidak disalahgunakan oleh pihak ketiga.</p>
+      <p>Kami menerapkan sistem WUG Secure System untuk memastikan setiap input data diproses dengan enkripsi standar dan tidak disalahgunakan pihak ketiga.</p>
     </PolicySection>
     <PolicySection num="4" title="Kebijakan Pihak Ketiga">
-      <p>Kebijakan Privasi Gamato Piranti tidak berlaku untuk pengiklan atau situs web lain. Kami menyarankan Anda untuk berkonsultasi dengan Kebijakan Privasi masing-masing dari server pihak ketiga tersebut untuk informasi lebih rinci.</p>
+      <p>Kebijakan Privasi ini tidak berlaku untuk situs atau layanan pihak ketiga. Kami menyarankan Anda membaca kebijakan masing-masing layanan yang Anda gunakan.</p>
     </PolicySection>
   </div>
 );
 
 const TermsPage: React.FC = () => (
-  <div className="max-w-3xl mx-auto space-y-6">
+  <div className="max-w-3xl mx-auto space-y-5">
     <div className="text-center space-y-3 pb-2">
-      <span className="inline-block text-[10px] font-bold uppercase tracking-[0.2em] text-blue-600 bg-blue-50 px-3 py-1 rounded-full">Kebijakan</span>
+      <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full">Kebijakan</span>
       <h1 className="text-3xl font-bold text-slate-900">Terms of Service</h1>
-      <p className="text-slate-500 text-sm">Gamato Piranti · Terakhir diperbarui: 2 Maret 2026</p>
-      <p className="text-slate-600 text-sm max-w-xl mx-auto leading-relaxed">
-        Dengan mengakses dan menggunakan Gamato Piranti, Anda menyetujui ketentuan layanan berikut ini secara penuh.
-      </p>
+      <p className="text-slate-400 text-sm">Gamato Piranti · Terakhir diperbarui: 2 Maret 2026</p>
     </div>
     <PolicySection num="1" title="Penerimaan Ketentuan">
-      <p>Dengan mengakses situs web ini, kami menganggap Anda menerima syarat dan ketentuan ini secara penuh. Jangan terus menggunakan Gamato Piranti jika Anda tidak menerima semua ketentuan yang tercantum di halaman ini.</p>
+      <p>Dengan mengakses situs ini, Anda menerima syarat dan ketentuan ini secara penuh. Hentikan penggunaan jika Anda tidak setuju dengan ketentuan yang berlaku.</p>
     </PolicySection>
     <PolicySection num="2" title="Lisensi Penggunaan">
-      <p className="mb-3">Gamato Piranti memberikan izin untuk menggunakan alat digital yang tersedia untuk penggunaan pribadi maupun komersial ringan. Namun, Anda dilarang:</p>
+      <p className="mb-3">Anda diizinkan menggunakan alat untuk keperluan pribadi maupun komersial ringan. Namun, Anda dilarang:</p>
       <ul className="space-y-1.5">
-        {[
-          "Menyalin atau memodifikasi materi tanpa izin.",
-          "Menggunakan tools untuk tujuan ilegal atau melanggar hukum.",
-          "Melakukan tindakan yang merusak integritas infrastruktur server kami.",
-        ].map((item) => (
-          <li key={item} className="flex items-start gap-2">
-            <span className="mt-1 w-1.5 h-1.5 rounded-full bg-rose-400 flex-shrink-0" />
-            <span>{item}</span>
-          </li>
+        {["Menyalin atau memodifikasi materi tanpa izin.", "Menggunakan tools untuk tujuan ilegal.", "Merusak integritas infrastruktur layanan kami."].map(item => (
+          <li key={item} className="flex items-start gap-2"><span className="mt-1 w-1.5 h-1.5 rounded-full bg-rose-400 flex-shrink-0" /><span>{item}</span></li>
         ))}
       </ul>
     </PolicySection>
     <PolicySection num="3" title="Batasan Tanggung Jawab">
-      <p>Semua alat di Gamato Piranti disediakan "sebagaimana adanya" (as is). Kami tidak memberikan jaminan bahwa alat akan selalu bebas dari kesalahan atau gangguan. Gamato Piranti tidak bertanggung jawab atas kerugian yang timbul dari penggunaan atau ketidakmampuan menggunakan layanan kami.</p>
+      <p>Semua alat disediakan "sebagaimana adanya". Gamato Piranti tidak bertanggung jawab atas kerugian yang timbul dari penggunaan layanan kami.</p>
     </PolicySection>
     <PolicySection num="4" title="Perubahan Layanan">
-      <p>Sebagai studio inovasi digital, kami berhak menambah atau menghapus fitur/tools tanpa pemberitahuan sebelumnya demi pengembangan kualitas layanan.</p>
+      <p>Kami berhak menambah atau menghapus fitur tanpa pemberitahuan sebelumnya demi peningkatan kualitas layanan.</p>
     </PolicySection>
   </div>
 );
 
-// ---------- Page wrappers ----------
+// ─── Page wrappers ────────────────────────────────────────────────────────────
 
-const pageWrap = (
-  badge: string,
-  title: string,
-  subtitle: string,
-  children: React.ReactNode
-) => (
+const PageShell: React.FC<{ badge: string; title: string; subtitle: string; children: React.ReactNode }> = ({ badge, title, subtitle, children }) => (
   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-    <div className="space-y-1">
-      <span className="inline-block text-[10px] font-bold uppercase tracking-[0.2em] text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-        {badge}
-      </span>
+    <div className="space-y-1.5">
+      <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full">{badge}</span>
       <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{title}</h1>
-      <p className="text-slate-500 text-sm max-w-xl">{subtitle}</p>
+      <p className="text-slate-500 text-sm max-w-2xl">{subtitle}</p>
     </div>
     {children}
   </div>
 );
 
-const QRBarcodePage: React.FC = () =>
-  pageWrap(
-    "Kode",
-    "QR & Barcode Studio",
-    "Buat QR code multi-template dengan logo kustom, atau barcode berbagai format — semuanya offline di browser.",
-    <QRBarcodeStudio />
-  );
-
-const PdfPage: React.FC = () =>
-  pageWrap(
-    "Dokumen",
-    "PDF Lab – Suite",
-    "Toolkit PDF lengkap: kompres, gabung, pecah halaman, atur ulang, ekstrak, rotate, dan konversi.",
-    <PdfTools />
-  );
-
-const DocsPage: React.FC = () =>
-  pageWrap(
-    "Dokumen",
-    "Doc Studio",
-    "Editor dokumen ringan dengan ekspor .docx, .pdf, dan .txt. Lengkap dengan Find & Replace, template cepat, dan snapshot sesi.",
-    <DocTools />
-  );
-
-const ImagePage: React.FC = () =>
-  pageWrap(
-    "Gambar",
-    "Image Lab",
-    "Kompres, ubah ukuran, konversi format (JPG/PNG/WEBP), dan putar gambar — batch processing langsung di browser.",
-    <ImageTools />
-  );
-
-const UtilityPage: React.FC = () =>
-  pageWrap(
-    "Utilitas",
-    "Rak Utilitas",
-    "Kumpulan alat kecil: JSON formatter, Base64, bulk teks, kalkulator pajak & bunga, WA link, password generator, dan lainnya.",
-    <UtilityShelf />
-  );
-
-const PrivacyRoute: React.FC = () => (
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    <PrivacyPage />
-  </div>
-);
-
-const TermsRoute: React.FC = () => (
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    <TermsPage />
-  </div>
-);
-
-// ---------- App ----------
+// ─── App ──────────────────────────────────────────────────────────────────────
 
 export const App: React.FC = () => (
   <BrowserRouter>
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<Home />} />
-        <Route path="qr" element={<QRBarcodePage />} />
-        <Route path="pdf" element={<PdfPage />} />
-        <Route path="docs" element={<DocsPage />} />
-        <Route path="image" element={<ImagePage />} />
-        <Route path="utility" element={<UtilityPage />} />
+        <Route path="qr" element={<PageShell badge="Kode" title="QR & Barcode Studio" subtitle="Buat QR code multi-template dengan logo & warna kustom, atau barcode berbagai format — real-time, offline, di browser."><QRBarcodeStudio /></PageShell>} />
+        <Route path="pdf" element={<PageShell badge="Dokumen" title="PDF Lab – Suite" subtitle="9 mode pemrosesan PDF: gabung, pecah, kompres, ekstrak, hapus, putar, atur halaman, gambar→PDF, dan teks→PDF."><PdfTools /></PageShell>} />
+        <Route path="docs" element={<PageShell badge="Dokumen" title="Doc Studio" subtitle="Editor dokumen ringan dengan ekspor .docx, .pdf, .txt — dilengkapi Find & Replace, template cepat, dan snapshot sesi."><DocTools /></PageShell>} />
+        <Route path="image" element={<PageShell badge="Gambar" title="Image Lab" subtitle="Kompres, ubah ukuran, konversi format (JPG/PNG/WEBP), dan putar gambar — batch processing langsung di browser."><ImageTools /></PageShell>} />
+        <Route path="utility" element={<PageShell badge="Utilitas" title="Rak Utilitas" subtitle="10+ alat kecil: JSON formatter, Base64, bulk teks, kalkulator pajak & bunga, WA link, password & token generator, hapus metadata."><UtilityShelf /></PageShell>} />
         <Route path="about" element={<About />} />
-        <Route path="privacy" element={<PrivacyRoute />} />
-        <Route path="terms" element={<TermsRoute />} />
+        <Route path="privacy" element={<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"><PrivacyPage /></div>} />
+        <Route path="terms" element={<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"><TermsPage /></div>} />
       </Route>
     </Routes>
   </BrowserRouter>
