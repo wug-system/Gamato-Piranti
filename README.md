@@ -1,6 +1,6 @@
 # Gamato Piranti v2.0
 
-**Suite alat digital modern — browser-native, gratis, tanpa upload ke server.**
+**Suite alat digital modern — browser-native, gratis, privasi terjaga.**
 
 [![Built with React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev)
 [![Built with Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite)](https://vite.dev)
@@ -27,25 +27,12 @@ npm install
 npm run dev
 ```
 
-## 📦 Build Produksi
+## 📦 Build
 
 ```bash
 npm run build
 npm run preview
 ```
-
----
-
-## 🌐 Deploy
-
-### Vercel
-Sudah ada `vercel.json` — push ke GitHub lalu connect ke Vercel. Otomatis.
-
-### Netlify
-Sudah ada `public/_redirects` — drag & drop folder `dist/` ke Netlify, atau connect repo.
-
-### Cloudflare Pages
-Build command: `npm run build` · Output: `dist`
 
 ---
 
@@ -68,20 +55,20 @@ Build command: `npm run build` · Output: `dist`
 src/
 ├── components/
 │   └── layout/
-│       ├── Header.tsx      # Navbar sticky dengan dropdown animasi
-│       ├── Footer.tsx      # Footer 4 kolom
-│       └── Layout.tsx      # Shell wrapper + breadcrumb
+│       ├── Header.tsx
+│       ├── Footer.tsx
+│       └── Layout.tsx
 ├── pages/
-│   ├── Home.tsx            # Landing page hero + tool grid
-│   └── About.tsx           # Halaman About Us
+│   ├── Home.tsx
+│   └── About.tsx
 ├── utils/
-│   ├── cn.ts               # Class name helper
-│   └── sanitize.ts         # Input sanitizer
-├── App.tsx                 # Semua logika tool + routing
+│   ├── cn.ts
+│   └── sanitize.ts
+├── App.tsx          # Semua logika tool + routing
 ├── main.tsx
 └── index.css
 ```
 
 ---
 
-© 2025 Gamato Piranti. Fokus ke utilitas, bukan klaim.
+© 2025 Gamato Piranti · Powered by **WisDev**
