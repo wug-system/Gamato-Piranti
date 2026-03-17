@@ -1,5 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import {
+  QrCode, Barcode, FileText, FilePlus, FileOutput, FileX, RotateCw,
+  Layers, Image, FileImage, AlignLeft, Download, Upload, Trash2, RefreshCw,
+  Plus, Minus, Settings2, Palette, Wifi, Mail, Phone, Link2, Type,
+  SlidersHorizontal, Code2, ListOrdered, Radio, Calculator, TrendingUp,
+  BarChart3, MessageCircle, KeyRound, Eraser, CheckCheck, Copy,
+  ChevronDown, ChevronRight, Loader2, ShieldCheck, Zap, Info,
+  FileDown, ArrowLeftRight, Wand2
+} from "lucide-react";
 import QRCode from "qrcode";
 import JsBarcode from "jsbarcode";
 import { PDFDocument, StandardFonts, rgb, degrees } from "pdf-lib";
@@ -51,8 +60,8 @@ const Btn: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 
 );
 
 const SectionBadge: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-700 bg-green-50 px-3 py-1 rounded-full border border-green-200">
-    <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+    <ShieldCheck className="w-3 h-3" />
     {children}
   </span>
 );
@@ -92,10 +101,10 @@ const Dropzone: React.FC<{
   multiple?: boolean;
   label?: string;
   sublabel?: string;
-  icon?: string;
+  icon?: React.ReactNode;
   isDragging?: boolean;
   setIsDragging?: (v: boolean) => void;
-}> = ({ onFiles, accept, multiple = true, label = "Drop files here", sublabel = "or click to browse", icon = "📂", isDragging, setIsDragging }) => {
+}> = ({ onFiles, accept, multiple = true, label = "Drop files here", sublabel = "atau klik untuk browse", icon, isDragging, setIsDragging }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -116,7 +125,9 @@ const Dropzone: React.FC<{
     >
       <input ref={inputRef} type="file" className="hidden" accept={accept} multiple={multiple} onChange={(e) => { if (e.target.files) onFiles(Array.from(e.target.files)); }} />
       <div className="flex flex-col items-center gap-3">
-        <div className={cn("p-4 rounded-2xl text-3xl transition-all", isDragging ? "bg-blue-100" : "bg-slate-100 group-hover:bg-blue-100")}>{icon}</div>
+        <div className={cn("p-4 rounded-2xl transition-all", isDragging ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-500")}>
+          {icon ?? <Upload className="w-8 h-8" />}
+        </div>
         <div>
           <p className="text-base font-semibold text-slate-800">{label}</p>
           <p className="text-sm text-slate-400 mt-0.5">{sublabel}</p>
@@ -258,23 +269,26 @@ const QRBarcodeStudio: React.FC = () => {
     canvas.toBlob(b => { if (b) downloadBlob(b, "gamato-barcode.png"); });
   };
 
-  const TEMPLATES: { id: QrTemplate; label: string; emoji: string }[] = [
-    { id: "url", label: "URL", emoji: "🔗" },
-    { id: "text", label: "Teks", emoji: "📝" },
-    { id: "wifi", label: "WiFi", emoji: "📶" },
-    { id: "email", label: "Email", emoji: "✉️" },
-    { id: "phone", label: "Telepon", emoji: "📞" },
+  const TEMPLATES: { id: QrTemplate; label: string; icon: React.ReactNode }[] = [
+    { id: "url",   label: "URL",     icon: <Link2  className="w-4 h-4" /> },
+    { id: "text",  label: "Teks",    icon: <Type   className="w-4 h-4" /> },
+    { id: "wifi",  label: "WiFi",    icon: <Wifi   className="w-4 h-4" /> },
+    { id: "email", label: "Email",   icon: <Mail   className="w-4 h-4" /> },
+    { id: "phone", label: "Telepon", icon: <Phone  className="w-4 h-4" /> },
   ];
 
   return (
     <div className="space-y-6">
       {/* Mode toggle */}
       <div className="grid grid-cols-2 gap-3">
-        {[{ id: "qr", label: "QR Code", sub: "5 template • logo • warna" }, { id: "barcode", label: "Barcode", sub: "6 format • validasi otomatis" }].map(m => (
+        {[{ id: "qr", icon: <QrCode className="w-5 h-5" />, label: "QR Code", sub: "5 template • logo • warna" }, { id: "barcode", icon: <Barcode className="w-5 h-5" />, label: "Barcode", sub: "6 format • validasi otomatis" }].map(m => (
           <button key={m.id} type="button" onClick={() => setMode(m.id as "qr" | "barcode")}
-            className={cn("rounded-2xl border-2 p-4 text-left transition-all", mode === m.id ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:border-slate-300")}>
-            <div className={cn("font-bold text-base", mode === m.id ? "text-blue-700" : "text-slate-900")}>{m.label}</div>
-            <div className="text-xs text-slate-500 mt-0.5">{m.sub}</div>
+            className={cn("rounded-2xl border-2 p-4 text-left transition-all flex items-center gap-3", mode === m.id ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:border-slate-300")}>
+            <span className={cn("shrink-0", mode === m.id ? "text-blue-600" : "text-slate-400")}>{m.icon}</span>
+            <div>
+              <div className={cn("font-bold text-base", mode === m.id ? "text-blue-700" : "text-slate-900")}>{m.label}</div>
+              <div className="text-xs text-slate-500 mt-0.5">{m.sub}</div>
+            </div>
           </button>
         ))}
       </div>
@@ -292,7 +306,7 @@ const QRBarcodeStudio: React.FC = () => {
                     <button key={t.id} type="button" onClick={() => setQrTemplate(t.id)}
                       className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all",
                         qrTemplate === t.id ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:bg-blue-50")}>
-                      <span>{t.emoji}</span><span>{t.label}</span>
+                      {t.icon}<span>{t.label}</span>
                     </button>
                   ))}
                 </div>
@@ -347,7 +361,7 @@ const QRBarcodeStudio: React.FC = () => {
                 </Select>
                 <Input label="Tinggi (px)" type="number" min={40} max={200} value={barcodeHeight} onChange={e => setBarcodeHeight(Number(e.target.value) || 80)} />
               </div>
-              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">⚠ Format EAN/UPC/ITF hanya mendukung angka dengan panjang tertentu.</p>
+              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">Format EAN/UPC/ITF hanya mendukung angka dengan panjang tertentu.</p>
             </div>
           )}
 
@@ -387,12 +401,12 @@ const QRBarcodeStudio: React.FC = () => {
                     {logoPreview ? (
                       <div className="flex items-center gap-4 w-full">
                         <img src={logoPreview} alt="Logo" className="w-14 h-14 rounded-xl object-cover border border-slate-200 shadow-sm" />
-                        <span className="flex-1 text-sm text-slate-600 font-medium">Logo terpasang ✓</span>
+                        <span className="flex-1 text-sm text-slate-600 font-medium">Logo terpasang </span>
                         <button type="button" onClick={e => { e.preventDefault(); setLogoFile(null); }} className="text-sm text-red-500 font-semibold hover:text-red-700">Hapus</button>
                       </div>
                     ) : (
                       <div className="text-center">
-                        <div className="text-3xl mb-2">🖼</div>
+                        <div className="flex justify-center mb-2 text-slate-400"><Upload className="w-7 h-7" /></div>
                         <p className="text-sm font-semibold text-slate-600">Upload Logo <span className="text-blue-600">PNG/JPG</span></p>
                         <p className="text-xs text-slate-400 mt-1">Akan tampil di tengah QR code</p>
                       </div>
@@ -404,10 +418,10 @@ const QRBarcodeStudio: React.FC = () => {
             )}
           </div>
 
-          {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 flex gap-2"><span>⚠</span>{error}</div>}
+          {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 flex gap-2"><span></span>{error}</div>}
 
           <Btn onClick={generate} disabled={isGenerating || !(mode === "qr" ? !!buildQrPayload().trim() : !!barcodeContent.trim())} className="w-full py-4 text-base">
-            {isGenerating ? "⏳ Memproses…" : mode === "qr" ? "⚡ Generate QR Code" : "⚡ Generate Barcode"}
+            {isGenerating ? <><Loader2 className="w-4 h-4 animate-spin" />Memproses…</> : mode === "qr" ? <><QrCode className="w-4 h-4" />Generate QR Code</> : <><Barcode className="w-4 h-4" />Generate Barcode</>}
           </Btn>
         </div>
 
@@ -435,15 +449,15 @@ const QRBarcodeStudio: React.FC = () => {
 
           {mode === "qr" ? (
             <Btn onClick={downloadQR} disabled={!qrUrlImage} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white border-0 text-base shadow-lg shadow-blue-600/20">
-              ⬇ Unduh QR sebagai PNG
+              <><Download className="w-4 h-4" />Unduh QR · PNG</>
             </Btn>
           ) : (
             <Btn onClick={downloadBarcode} disabled={!barcodeContent.trim()} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white border-0 text-base shadow-lg shadow-blue-600/20">
-              ⬇ Unduh Barcode PNG
+              <><Download className="w-4 h-4" />Unduh Barcode · PNG</>
             </Btn>
           )}
 
-          <div className="text-center"><SectionBadge>100% browser · tanpa upload</SectionBadge></div>
+          <div className="text-center"><SectionBadge>Diproses langsung di perangkatmu</SectionBadge></div>
         </div>
       </div>
     </div>
@@ -525,8 +539,8 @@ const PdfTools: React.FC = () => {
         }
         const blob = new Blob([await pdfDoc.save()], { type: "application/pdf" });
         downloadBlob(blob, "gamato-text.pdf");
-        setInfo("✓ Teks berhasil dikonversi ke PDF.");
-      } catch (err: any) { setInfo("✗ " + (err?.message || "Gagal.")); }
+        setInfo("Teks berhasil dikonversi ke PDF.");
+      } catch (err: any) { setInfo("" + (err?.message || "Gagal.")); }
       finally { setIsWorking(false); }
       return;
     }
@@ -543,8 +557,8 @@ const PdfTools: React.FC = () => {
           pg.drawImage(image, { x: 0, y: 0, width, height });
         }
         downloadBlob(new Blob([await pdfDoc.save()], { type: "application/pdf" }), "gamato-images.pdf");
-        setInfo(`✓ ${files.length} gambar digabung menjadi PDF.`);
-      } catch (err: any) { setInfo("✗ " + (err?.message || "Gagal.")); }
+        setInfo(`${files.length} gambar digabung menjadi PDF.`);
+      } catch (err: any) { setInfo("" + (err?.message || "Gagal.")); }
       finally { setIsWorking(false); }
       return;
     }
@@ -558,7 +572,7 @@ const PdfTools: React.FC = () => {
           (await doc.copyPages(src, src.getPageIndices())).forEach(p => doc.addPage(p));
         }
         downloadBlob(new Blob([await doc.save()], { type: "application/pdf" }), "gamato-merged.pdf");
-        setInfo(`✓ ${files.length} PDF berhasil digabung.`);
+        setInfo(`${files.length} PDF berhasil digabung.`);
       } else if (mode === "split") {
         const src = await PDFDocument.load(await fileToArrayBuffer(files[0]));
         for (let i = 0; i < src.getPageCount(); i++) {
@@ -566,20 +580,20 @@ const PdfTools: React.FC = () => {
           doc.addPage((await doc.copyPages(src, [i]))[0]);
           downloadBlob(new Blob([await doc.save()], { type: "application/pdf" }), `gamato-page-${i + 1}.pdf`);
         }
-        setInfo(`✓ PDF dipecah menjadi ${src.getPageCount()} file.`);
+        setInfo(`PDF dipecah menjadi ${src.getPageCount()} file.`);
       } else if (mode === "compress") {
         const doc = await PDFDocument.load(await fileToArrayBuffer(files[0]), { updateMetadata: true });
         doc.setTitle(`Compressed by Gamato Piranti (${compressLevel})`);
         downloadBlob(new Blob([await doc.save({ useObjectStreams: true })], { type: "application/pdf" }), `gamato-compressed-${compressLevel}.pdf`);
-        setInfo(`✓ PDF dikompresi (level: ${compressLevel}).`);
+        setInfo(`PDF dikompresi (level: ${compressLevel}).`);
       } else if (mode === "extract") {
         const src = await PDFDocument.load(await fileToArrayBuffer(files[0]));
         const indices = parsePageSpec(pageSpec, src.getPageCount());
-        if (!indices.length) { setInfo("✗ Rentang halaman tidak valid."); return; }
+        if (!indices.length) { setInfo("Rentang halaman tidak valid."); return; }
         const doc = await PDFDocument.create();
         (await doc.copyPages(src, indices)).forEach(p => doc.addPage(p));
         downloadBlob(new Blob([await doc.save()], { type: "application/pdf" }), "gamato-extract.pdf");
-        setInfo(`✓ ${indices.length} halaman diekstrak.`);
+        setInfo(`${indices.length} halaman diekstrak.`);
       } else if (mode === "delete") {
         const src = await PDFDocument.load(await fileToArrayBuffer(files[0]));
         const total = src.getPageCount();
@@ -588,14 +602,14 @@ const PdfTools: React.FC = () => {
         const doc = await PDFDocument.create();
         (await doc.copyPages(src, keep)).forEach(p => doc.addPage(p));
         downloadBlob(new Blob([await doc.save()], { type: "application/pdf" }), "gamato-clean.pdf");
-        setInfo(`✓ ${toRemove.size} halaman dihapus. Sisa ${keep.length} halaman.`);
+        setInfo(`${toRemove.size} halaman dihapus. Sisa ${keep.length} halaman.`);
       } else if (mode === "rotate") {
         const src = await PDFDocument.load(await fileToArrayBuffer(files[0]));
         const total = src.getPageCount();
         const target = rotateSpec === "semua" ? Array.from({ length: total }, (_, i) => i) : parsePageSpec(pageSpec, total);
         target.forEach(idx => src.getPage(idx).setRotation(degrees(rotateDegrees)));
         downloadBlob(new Blob([await src.save()], { type: "application/pdf" }), "gamato-rotated.pdf");
-        setInfo(`✓ ${target.length} halaman diputar ${rotateDegrees}°.`);
+        setInfo(`${target.length} halaman diputar ${rotateDegrees}°.`);
       } else if (mode === "organize") {
         const src = await PDFDocument.load(await fileToArrayBuffer(files[0]));
         const total = src.getPageCount();
@@ -605,26 +619,26 @@ const PdfTools: React.FC = () => {
           if (m) { let s = parseInt(m[1]), e = parseInt(m[2]); if (s > e) [s, e] = [e, s]; for (let p = s; p <= e; p++) if (p >= 1 && p <= total) order.push(p - 1); }
           else { const n = parseInt(token); if (!isNaN(n) && n >= 1 && n <= total) order.push(n - 1); }
         }
-        if (!order.length) { setInfo("✗ Urutan halaman tidak valid."); return; }
+        if (!order.length) { setInfo("Urutan halaman tidak valid."); return; }
         const doc = await PDFDocument.create();
         (await doc.copyPages(src, order)).forEach(p => doc.addPage(p));
         downloadBlob(new Blob([await doc.save()], { type: "application/pdf" }), "gamato-organized.pdf");
-        setInfo(`✓ Halaman diatur ulang (${pageSpec}).`);
+        setInfo(`Halaman diatur ulang (${pageSpec}).`);
       }
-    } catch (err: any) { setInfo("✗ " + (err?.message || "Gagal memproses PDF.")); }
+    } catch (err: any) { setInfo("" + (err?.message || "Gagal memproses PDF.")); }
     finally { setIsWorking(false); }
   };
 
-  const PDF_MODES: { id: PdfMode; label: string; emoji: string; desc: string }[] = [
-    { id: "merge", label: "Gabung", emoji: "🔗", desc: "Combine multiple PDFs" },
-    { id: "split", label: "Pecah", emoji: "✂️", desc: "Tiap halaman jadi file" },
-    { id: "compress", label: "Kompres", emoji: "📦", desc: "Kurangi ukuran file" },
-    { id: "extract", label: "Ekstrak", emoji: "📤", desc: "Ambil halaman tertentu" },
-    { id: "delete", label: "Hapus Halaman", emoji: "🗑", desc: "Buang halaman" },
-    { id: "rotate", label: "Putar", emoji: "🔄", desc: "Rotasi halaman" },
-    { id: "organize", label: "Atur Ulang", emoji: "🗂", desc: "Susun urutan halaman" },
-    { id: "imagesToPdf", label: "Gambar → PDF", emoji: "🖼", desc: "JPG/PNG ke PDF" },
-    { id: "textToPdf", label: "Teks → PDF", emoji: "📄", desc: "Teks polos ke PDF" },
+  const PDF_MODES: { id: PdfMode; label: string; icon: React.ReactNode; desc: string }[] = [
+    { id: "merge",       label: "Gabung",        icon: <Layers className="w-5 h-5" />,      desc: "Combine multiple PDFs" },
+    { id: "split",       label: "Pecah",         icon: <FileOutput className="w-5 h-5" />,   desc: "Tiap halaman jadi file" },
+    { id: "compress",    label: "Kompres",       icon: <FileDown className="w-5 h-5" />,     desc: "Kurangi ukuran file" },
+    { id: "extract",     label: "Ekstrak",       icon: <FilePlus className="w-5 h-5" />,     desc: "Ambil halaman tertentu" },
+    { id: "delete",      label: "Hapus Halaman", icon: <FileX className="w-5 h-5" />,        desc: "Buang halaman" },
+    { id: "rotate",      label: "Putar",         icon: <RotateCw className="w-5 h-5" />,     desc: "Rotasi halaman" },
+    { id: "organize",    label: "Atur Ulang",    icon: <SlidersHorizontal className="w-5 h-5" />, desc: "Susun urutan halaman" },
+    { id: "imagesToPdf", label: "Gambar → PDF",  icon: <FileImage className="w-5 h-5" />,    desc: "JPG/PNG ke PDF" },
+    { id: "textToPdf",   label: "Teks → PDF",    icon: <AlignLeft className="w-5 h-5" />,    desc: "Teks polos ke PDF" },
   ];
 
   return (
@@ -635,7 +649,7 @@ const PdfTools: React.FC = () => {
           <button key={m.id} type="button" onClick={() => { setMode(m.id); setFiles([]); setInfo(null); }}
             className={cn("flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 text-center transition-all",
               mode === m.id ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50")}>
-            <span className="text-2xl">{m.emoji}</span>
+            <span className={cn("transition-colors", mode === m.id ? "text-blue-600" : "text-slate-400")}>{m.icon}</span>
             <span className={cn("text-xs font-bold", mode === m.id ? "text-blue-700" : "text-slate-700")}>{m.label}</span>
           </button>
         ))}
@@ -649,7 +663,7 @@ const PdfTools: React.FC = () => {
             <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
               <Textarea label="Teks untuk dijadikan PDF" rows={12} value={textForPdf} onChange={e => setTextForPdf(e.target.value)} placeholder="Tulis atau tempel teks di sini…" />
               <Btn onClick={handleRun} disabled={isWorking || !textForPdf.trim()} className="w-full py-3.5">
-                {isWorking ? "⏳ Memproses…" : "📄 Jadikan PDF"}
+                {isWorking ? <><Loader2 className="w-4 h-4 animate-spin" />Memproses…</> : <><FileText className="w-4 h-4" />Jadikan PDF</>}
               </Btn>
             </div>
           ) : (
@@ -661,7 +675,7 @@ const PdfTools: React.FC = () => {
                 multiple={mode === "merge" || mode === "imagesToPdf"}
                 label={mode === "imagesToPdf" ? "Drop gambar JPG/PNG di sini" : "Drop file PDF di sini"}
                 sublabel={mode === "merge" ? "Bisa pilih beberapa file — urutannya bisa diatur" : "atau klik untuk browse"}
-                icon={mode === "imagesToPdf" ? "🖼" : "📄"}
+                icon={mode === "imagesToPdf" ? <FileImage className="w-8 h-8 text-slate-400" /> : <FileText className="w-8 h-8 text-slate-400" />}
                 isDragging={isDragging}
                 setIsDragging={setIsDragging}
               />
@@ -676,12 +690,12 @@ const PdfTools: React.FC = () => {
                   <div className="divide-y divide-slate-100">
                     {files.map((file, i) => (
                       <div key={`${file.name}-${i}`} className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50 transition-colors">
-                        <span className="text-xl">{mode === "imagesToPdf" ? "🖼" : "📄"}</span>
+                        <span className={cn("text-slate-400", mode === "imagesToPdf" ? "" : "")}>{mode === "imagesToPdf" ? <FileImage className="w-5 h-5" /> : <FileText className="w-5 h-5" />}</span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-slate-800 truncate">{file.name}</p>
                           <p className="text-xs text-slate-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                         </div>
-                        <button type="button" onClick={() => removeFile(i)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">✕</button>
+                        <button type="button" onClick={() => removeFile(i)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     ))}
                   </div>
@@ -731,7 +745,7 @@ const PdfTools: React.FC = () => {
               )}
 
               <Btn onClick={handleRun} disabled={isWorking || !files.length} className="w-full py-4 text-base">
-                {isWorking ? "⏳ Memproses…" : "⚡ Proses PDF"}
+                {isWorking ? <><Loader2 className="w-4 h-4 animate-spin" />Memproses…</> : <><Zap className="w-4 h-4" />Proses PDF</>}
               </Btn>
             </>
           )}
@@ -741,7 +755,7 @@ const PdfTools: React.FC = () => {
         <div className="bg-slate-900 rounded-2xl p-5 text-white space-y-4 sticky top-24">
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Mode Aktif</p>
           <div className="flex items-center gap-3">
-            <span className="text-3xl">{PDF_MODES.find(m2 => m2.id === mode)?.emoji}</span>
+            <span className="text-blue-400">{PDF_MODES.find(m2 => m2.id === mode)?.icon}</span>
             <div>
               <p className="font-bold text-white">{PDF_MODES.find(m2 => m2.id === mode)?.label}</p>
               <p className="text-xs text-slate-400">{PDF_MODES.find(m2 => m2.id === mode)?.desc}</p>
@@ -759,11 +773,11 @@ const PdfTools: React.FC = () => {
             {mode === "textToPdf" && <><p>• Teks polos jadi PDF rapi.</p><p>• Layout sederhana, bisa dibuka di mana saja.</p></>}
           </div>
           {info && (
-            <div className={cn("rounded-xl px-4 py-3 text-sm font-medium border", info.startsWith("✓") ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20")}>
+            <div className={cn("rounded-xl px-4 py-3 text-sm font-medium border", info.includes("berhasil") || info.includes("diproses") || info.includes("diekspor") || info.includes("selesai") || info.includes("digabung") || info.includes("dipecah") || info.includes("dikompresi") || info.includes("diekstrak") || info.includes("dihapus") || info.includes("diputar") || info.includes("diatur") || info.includes("disiapkan") ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20")}>
               {info}
             </div>
           )}
-          <div className="pt-2"><SectionBadge>Offline — tanpa upload</SectionBadge></div>
+          <div className="pt-2"><SectionBadge>Proses native di perangkatmu</SectionBadge></div>
         </div>
       </div>
     </div>
@@ -801,7 +815,7 @@ const DocTools: React.FC = () => {
     if (!text.trim()) return;
     const doc = new Document({ sections: [{ properties: {}, children: text.split("\n").map(line => new Paragraph({ children: [new TextRun({ text: line || " ", size: 22 })] })) }] });
     downloadBlob(await Packer.toBlob(doc), `${sanitizeFileName(fileName || "gamato-dokumen")}.docx`);
-    setDocInfo("✓ Dokumen .docx berhasil disiapkan.");
+    setDocInfo("Dokumen .docx berhasil disiapkan.");
   };
 
   const exportPdf = async () => {
@@ -824,20 +838,20 @@ const DocTools: React.FC = () => {
         y -= lineHeight;
       }
       downloadBlob(new Blob([await pdfDoc.save()], { type: "application/pdf" }), `${sanitizeFileName(fileName || "gamato-dokumen")}.pdf`);
-      setDocInfo("✓ Disimpan sebagai PDF.");
-    } catch { setDocInfo("✗ Gagal menyusun PDF."); }
+      setDocInfo("Disimpan sebagai PDF.");
+    } catch { setDocInfo("Gagal menyusun PDF."); }
   };
 
   const downloadTxt = () => {
     if (!text) return;
     downloadBlob(new Blob([text], { type: "text/plain;charset=utf-8" }), `${sanitizeFileName(fileName || "gamato-dokumen")}.txt`);
-    setDocInfo("✓ Diekspor sebagai .txt.");
+    setDocInfo("Diekspor sebagai .txt.");
   };
 
   const importTxt = (files: FileList | null) => {
     if (!files?.[0]) return;
     const r = new FileReader();
-    r.onload = () => { setText((r.result as string) || ""); setDocInfo("✓ File .txt berhasil diimpor."); };
+    r.onload = () => { setText((r.result as string) || ""); setDocInfo("File .txt berhasil diimpor."); };
     r.readAsText(files[0]);
   };
 
@@ -845,19 +859,19 @@ const DocTools: React.FC = () => {
     if (kind === "notulen") { setText("NOTULEN RAPAT\nGamato Piranti\n\nAgenda:\n- \n\nPeserta:\n- \n\nRingkasan:\n- \n\nKeputusan:\n- \n\nTindak Lanjut:\n- "); setFileName("Notulen Gamato"); }
     else if (kind === "surat") { setText("Surabaya, .................................... 20..\n\nKepada Yth.\n...........................................\nDi Tempat\n\nPerihal: ...........................................\n\nDengan hormat,\n\n...\n\nHormat kami,\nGamato Piranti\n"); setFileName("Surat Gamato"); }
     else { setText("Catatan kerja Gamato Piranti\n\n- "); setFileName("Catatan Gamato"); }
-    setDocInfo("✓ Template dimuat.");
+    setDocInfo("Template dimuat.");
   };
 
   const quickClean = (kind: "trim" | "noBlank") => {
     if (!text) return;
-    if (kind === "trim") { setText(text.replace(/[ \t]+/g, " ")); setDocInfo("✓ Spasi ganda dirapikan."); }
-    else { setText(text.split(/\r?\n/).filter(l => l.trim() !== "").join("\n")); setDocInfo("✓ Baris kosong dihapus."); }
+    if (kind === "trim") { setText(text.replace(/[ \t]+/g, " ")); setDocInfo("Spasi ganda dirapikan."); }
+    else { setText(text.split(/\r?\n/).filter(l => l.trim() !== "").join("\n")); setDocInfo("Baris kosong dihapus."); }
   };
 
   const runFindReplace = () => {
     if (!findText || !text.includes(findText)) { setDocInfo("Teks tidak ditemukan."); return; }
     setText(text.split(findText).join(replaceText));
-    setDocInfo("✓ Cari & ganti selesai.");
+    setDocInfo("Cari & ganti selesai.");
   };
 
   const changeCase = (kind: "upper" | "lower" | "title") => {
@@ -865,7 +879,7 @@ const DocTools: React.FC = () => {
     if (kind === "upper") setText(text.toUpperCase());
     else if (kind === "lower") setText(text.toLowerCase());
     else setText(text.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()));
-    setDocInfo("✓ Huruf diubah.");
+    setDocInfo("Huruf diubah.");
   };
 
   return (
@@ -876,7 +890,7 @@ const DocTools: React.FC = () => {
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3 bg-slate-50 border-b border-slate-200">
             <div className="flex items-center gap-2">
-              <span className="text-xl">📝</span>
+              <FileText className="w-5 h-5 text-slate-400" />
               <Input value={fileName} onChange={e => setFileName(sanitizeFileName(e.target.value))} className="border-0 bg-transparent p-0 font-bold text-slate-800 text-base focus:ring-0 shadow-none" placeholder="Nama dokumen" />
             </div>
             <label className="text-sm text-blue-600 font-semibold cursor-pointer hover:text-blue-700">
@@ -887,7 +901,7 @@ const DocTools: React.FC = () => {
           {/* Quick actions */}
           <div className="flex flex-wrap gap-2 px-5 py-3 border-b border-slate-100 bg-white">
             <span className="text-xs font-bold text-slate-400 self-center mr-1">Template:</span>
-            {[["notulen", "📋 Notulen"], ["surat", "📮 Surat"], ["catatan", "🗒 Catatan"]].map(([k, l]) => (
+            {[["notulen", "Notulen"], ["surat", "Surat Resmi"], ["catatan", "Catatan Kerja"]].map(([k, l]) => (
               <button key={k} type="button" onClick={() => generateTemplate(k as any)} className="text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors">{l}</button>
             ))}
           </div>
@@ -925,15 +939,15 @@ const DocTools: React.FC = () => {
         {/* Export buttons */}
         <div className="flex flex-wrap gap-3">
           <Btn onClick={exportDocx} disabled={!text.trim()} className="bg-blue-600 hover:bg-blue-700 text-white border-0 shadow-md shadow-blue-600/20">
-            ⬇ Unduh .docx
+            Unduh .docx
           </Btn>
-          <Btn onClick={exportPdf} disabled={!text.trim()} variant="secondary">⬇ Unduh .pdf</Btn>
-          <Btn onClick={downloadTxt} disabled={!text} variant="secondary">⬇ Unduh .txt</Btn>
-          <Btn onClick={() => { setSnapshot(text); setSnapshotLabel(fileName); setDocInfo("✓ Snapshot disimpan."); }} disabled={!text} variant="ghost">📸 Snapshot</Btn>
-          <Btn onClick={() => { if (snapshot) { setText(snapshot); setDocInfo("✓ Snapshot dipulihkan."); } }} disabled={!snapshot} variant="ghost">↩ Pulihkan{snapshotLabel ? ` "${snapshotLabel}"` : ""}</Btn>
+          <Btn onClick={exportPdf} disabled={!text.trim()} variant="secondary" className="gap-2"><Download className="w-4 h-4" />Unduh .pdf</Btn>
+          <Btn onClick={downloadTxt} disabled={!text} variant="secondary" className="gap-2"><Download className="w-4 h-4" />Unduh .txt</Btn>
+          <Btn onClick={() => { setSnapshot(text); setSnapshotLabel(fileName); setDocInfo("Snapshot disimpan."); }} disabled={!text} variant="ghost" className="gap-2"><Copy className="w-4 h-4" />Snapshot</Btn>
+          <Btn onClick={() => { if (snapshot) { setText(snapshot); setDocInfo("Snapshot dipulihkan."); } }} disabled={!snapshot} variant="ghost">Pulihkan{snapshotLabel ? ` "${snapshotLabel}"` : ""}</Btn>
         </div>
 
-        {docInfo && <div className={cn("text-sm rounded-xl px-4 py-2.5 border font-medium", docInfo.startsWith("✓") ? "bg-green-50 text-green-700 border-green-200" : "bg-amber-50 text-amber-700 border-amber-200")}>{docInfo}</div>}
+        {docInfo && <div className={cn("text-sm rounded-xl px-4 py-2.5 border font-medium", docInfo.startsWith("Gagal") || docInfo.startsWith("Teks tidak") ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-green-50 text-green-700 border-green-200")}>{docInfo}</div>}
       </div>
 
       {/* Stats sidebar */}
@@ -971,7 +985,7 @@ const DocTools: React.FC = () => {
             </div>
           )}
 
-          <SectionBadge>Offline — data tidak dikirim</SectionBadge>
+          <SectionBadge>Native — data tidak dikirim</SectionBadge>
         </div>
       </div>
     </div>
@@ -1042,16 +1056,16 @@ const ImageTools: React.FC = () => {
         const suffix = mode === "compress" ? "compressed" : mode === "resize" ? "resized" : mode === "convert" ? "converted" : "rotated";
         downloadBlob(blob, `${base}-gp-${suffix}.${ext}`);
       }
-      setInfo(`✓ ${files.length} gambar berhasil diproses.`);
-    } catch (err: any) { setInfo("✗ " + (err?.message || "Gagal.")); }
+      setInfo(`${files.length} gambar berhasil diproses.`);
+    } catch (err: any) { setInfo("" + (err?.message || "Gagal.")); }
     finally { setIsWorking(false); }
   };
 
-  const IMG_MODES: { id: ImageMode; label: string; emoji: string }[] = [
-    { id: "compress", label: "Kompres", emoji: "📦" },
-    { id: "resize", label: "Ubah Ukuran", emoji: "📐" },
-    { id: "convert", label: "Konversi Format", emoji: "🔄" },
-    { id: "rotate", label: "Putar", emoji: "↩" },
+  const IMG_MODES: { id: ImageMode; label: string; icon: React.ReactNode }[] = [
+    { id: "compress", label: "Kompres", icon: <FileDown className="w-5 h-5" /> },
+    { id: "resize", label: "Ubah Ukuran", icon: <ArrowLeftRight className="w-5 h-5" /> },
+    { id: "convert", label: "Konversi Format", icon: <Wand2 className="w-5 h-5" /> },
+    { id: "rotate", label: "Putar", icon: <RotateCw className="w-5 h-5" /> },
   ];
 
   return (
@@ -1062,7 +1076,7 @@ const ImageTools: React.FC = () => {
           <button key={m.id} type="button" onClick={() => { setMode(m.id); setFiles([]); setPreviewUrls([]); setInfo(null); }}
             className={cn("flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all",
               mode === m.id ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:border-slate-300")}>
-            <span className="text-2xl">{m.emoji}</span>
+            <span className={cn("transition-colors", mode === m.id ? "text-blue-600" : "text-slate-400")}>{m.icon}</span>
             <span className={cn("text-sm font-bold", mode === m.id ? "text-blue-700" : "text-slate-700")}>{m.label}</span>
           </button>
         ))}
@@ -1072,7 +1086,7 @@ const ImageTools: React.FC = () => {
         {/* LEFT */}
         <div className="space-y-5">
           {files.length === 0 ? (
-            <Dropzone onFiles={addFiles} accept="image/*" multiple label="Drop gambar di sini" sublabel="JPG, PNG, WEBP — bisa beberapa file" icon="🖼" isDragging={isDragging} setIsDragging={setIsDragging} />
+            <Dropzone onFiles={addFiles} accept="image/*" multiple label="Drop gambar di sini" sublabel="JPG, PNG, WEBP — bisa beberapa file" icon={<Image className="w-8 h-8" />} isDragging={isDragging} setIsDragging={setIsDragging} />
           ) : (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="flex items-center justify-between px-5 py-3 bg-slate-50 border-b border-slate-100">
@@ -1084,7 +1098,7 @@ const ImageTools: React.FC = () => {
                   <div key={i} className="relative group">
                     <img src={url} alt="" className="w-20 h-20 object-cover rounded-xl border border-slate-200 shadow-sm" />
                     <button type="button" onClick={() => { setFiles(f => f.filter((_, j) => j !== i)); setPreviewUrls(u => u.filter((_, j) => j !== i)); }}
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs items-center justify-center hidden group-hover:flex">✕</button>
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs items-center justify-center hidden group-hover:flex"><Minus className="w-3 h-3" /></button>
                   </div>
                 ))}
               </div>
@@ -1128,10 +1142,10 @@ const ImageTools: React.FC = () => {
             </div>
           </div>
 
-          {info && <div className={cn("text-sm rounded-xl px-4 py-3 border font-medium", info.startsWith("✓") ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200")}>{info}</div>}
+          {info && <div className={cn("text-sm rounded-xl px-4 py-3 border font-medium", info.startsWith("Gagal") || info.startsWith("Tidak") ? "bg-red-50 text-red-700 border-red-200" : "bg-green-50 text-green-700 border-green-200")}>{info}</div>}
 
           <Btn onClick={processImages} disabled={isWorking || !files.length} className="w-full py-4 text-base">
-            {isWorking ? "⏳ Memproses…" : `⚡ Proses ${files.length > 0 ? files.length : ""} Gambar`}
+            <>{isWorking ? <><Loader2 className="w-4 h-4 animate-spin" />Memproses…</> : <><Wand2 className="w-4 h-4" />Proses {files.length > 0 ? `${files.length} ` : ""}Gambar</>}</>
           </Btn>
         </div>
 
@@ -1139,7 +1153,7 @@ const ImageTools: React.FC = () => {
         <div className="bg-slate-900 rounded-2xl p-5 text-white space-y-4 sticky top-24">
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Info Mode</p>
           <div className="flex items-center gap-3">
-            <span className="text-3xl">{IMG_MODES.find(m2 => m2.id === mode)?.emoji}</span>
+            <span className={cn("text-blue-400")}>{IMG_MODES.find(m2 => m2.id === mode)?.icon}</span>
             <p className="font-bold text-white">{IMG_MODES.find(m2 => m2.id === mode)?.label}</p>
           </div>
           <div className="border-t border-slate-800 pt-4 space-y-2 text-sm text-slate-300">
@@ -1148,7 +1162,7 @@ const ImageTools: React.FC = () => {
             {mode === "convert" && <><p>• Konversi antar format JPEG, PNG, WEBP.</p><p>• WEBP biasanya paling kecil ukurannya.</p></>}
             {mode === "rotate" && <><p>• Putar foto yang miring atau terbalik.</p><p>• Diterapkan ke semua file yang dipilih.</p></>}
           </div>
-          <SectionBadge>Offline — tanpa upload</SectionBadge>
+          <SectionBadge>Proses native di perangkatmu</SectionBadge>
         </div>
       </div>
     </div>
@@ -1210,7 +1224,7 @@ const UtilityShelf: React.FC = () => {
 
   const toJsonPretty = () => {
     try { setJsonPretty(JSON.stringify(JSON.parse(textInput), null, 2)); }
-    catch { setJsonPretty("⚠ Bukan JSON yang valid."); }
+    catch { setJsonPretty("Bukan JSON yang valid."); }
   };
   const toBase64 = () => setBase64(btoa(unescape(encodeURIComponent(sanitizeText(textInput)))));
   const fromBase64 = () => { try { setTextInput(sanitizeText(decodeURIComponent(escape(atob(base64))))); } catch {} };
@@ -1231,15 +1245,15 @@ const UtilityShelf: React.FC = () => {
   const analyzeMedia = () => {
     setMediaInfo(null); setDirectDownload(null);
     const safe = sanitizeUrl(mediaUrl);
-    if (!safe) { setMediaInfo("⚠ URL tidak valid."); return; }
+    if (!safe) { setMediaInfo("URL tidak valid."); return; }
     try {
       const u = new URL(safe);
-      if (/\.(mp4|webm|mov|m4a|mp3|wav)$/i.test(u.pathname)) { setDirectDownload(safe); setMediaInfo("✓ Terlihat seperti berkas langsung. Klik unduh."); return; }
+      if (/\.(mp4|webm|mov|m4a|mp3|wav)$/i.test(u.pathname)) { setDirectDownload(safe); setMediaInfo("Terlihat seperti berkas langsung. Klik unduh."); return; }
       const host = u.hostname.replace(/^www\./, "");
       if (["youtube.com", "youtu.be", "tiktok.com", "instagram.com", "twitter.com", "x.com"].includes(host))
-        setMediaInfo("ℹ Platform streaming besar tidak bisa diunduh langsung. Gunakan yt-dlp di terminal.");
-      else setMediaInfo("ℹ Link ini bukan berkas video langsung.");
-    } catch { setMediaInfo("⚠ URL tidak valid."); }
+        setMediaInfo("Platform streaming besar tidak bisa diunduh langsung. Gunakan yt-dlp di terminal.");
+      else setMediaInfo("Link ini bukan berkas video langsung.");
+    } catch { setMediaInfo("URL tidak valid."); }
   };
 
   const generateAlias = () => {
@@ -1257,7 +1271,7 @@ const UtilityShelf: React.FC = () => {
 
   const runTaxCalc = () => {
     const base = parseFloat(sanitizeNumberString(taxBase || "")), r = parseFloat(sanitizeNumberString(taxRate || ""));
-    if (isNaN(base) || isNaN(r)) { setTaxOutput("⚠ Masukkan nilai yang valid."); return; }
+    if (isNaN(base) || isNaN(r)) { setTaxOutput("Masukkan nilai yang valid."); return; }
     const rp = r / 100;
     if (taxMode === "exclusive") {
       const pajak = base * rp, total = base + pajak;
@@ -1270,7 +1284,7 @@ const UtilityShelf: React.FC = () => {
 
   const runInterestCalc = () => {
     const P = parseFloat(sanitizeNumberString(princ || "")), r = parseFloat(sanitizeNumberString(rate || "")) / 100, t = parseFloat(sanitizeNumberString(years || ""));
-    if (isNaN(P) || isNaN(r) || isNaN(t)) { setInterestOutput("⚠ Isi semua field dengan benar."); return; }
+    if (isNaN(P) || isNaN(r) || isNaN(t)) { setInterestOutput("Isi semua field dengan benar."); return; }
     const simple = P * r * t, n = compoundPerYear > 0 ? compoundPerYear : 1;
     const comp = P * Math.pow(1 + r / n, n * t) - P;
     setInterestOutput(`Bunga sederhana: ${formatCurrency(simple)} | Akhir: ${formatCurrency(P + simple)}\nBunga majemuk (${n}x/tahun): ${formatCurrency(comp)} | Akhir: ${formatCurrency(P + comp)}`);
@@ -1278,7 +1292,7 @@ const UtilityShelf: React.FC = () => {
 
   const runStats = () => {
     const nums = (statsInput || "").split(/[^0-9.+\-eE]+/).map(s => s.trim()).filter(s => s !== "").map(s => Number(s)).filter(n => Number.isFinite(n));
-    if (!nums.length) { setStatsOutput("⚠ Tidak ada angka valid."); return; }
+    if (!nums.length) { setStatsOutput("Tidak ada angka valid."); return; }
     const sorted = [...nums].sort((a, b) => a - b), count = nums.length, sum = nums.reduce((a, b) => a + b, 0), mean = sum / count;
     const median = count % 2 === 1 ? sorted[(count - 1) / 2] : (sorted[count / 2 - 1] + sorted[count / 2]) / 2;
     const stdev = Math.sqrt(nums.reduce((a, x) => a + Math.pow(x - mean, 2), 0) / count);
@@ -1316,8 +1330,8 @@ const UtilityShelf: React.FC = () => {
   };
 
   const copyToClipboard = async (text: string, setCb?: (m: string) => void) => {
-    try { await navigator.clipboard.writeText(text); setCb?.("✓ Disalin!"); }
-    catch { setCb?.("⚠ Gagal menyalin."); }
+    try { await navigator.clipboard.writeText(text); setCb?.("Disalin!"); }
+    catch { setCb?.("Gagal menyalin."); }
   };
 
   const runMetaClean = async () => {
@@ -1338,21 +1352,21 @@ const UtilityShelf: React.FC = () => {
         const ext = mime === "image/jpeg" ? "jpg" : mime === "image/png" ? "png" : "webp";
         downloadBlob(blob, `${base}-clean.${ext}`);
       }
-      setMetaInfo(`✓ ${metaFiles.length} gambar dibersihkan dari metadata.`);
-    } catch (err: any) { setMetaInfo("✗ " + (err?.message || "Gagal.")); }
+      setMetaInfo(`${metaFiles.length} gambar dibersihkan dari metadata.`);
+    } catch (err: any) { setMetaInfo("" + (err?.message || "Gagal.")); }
   };
 
-  const TABS: { id: Tab; label: string; emoji: string }[] = [
-    { id: "json", label: "JSON & Base64", emoji: "{ }" },
-    { id: "bulk", label: "Bulk Teks", emoji: "📋" },
-    { id: "media", label: "Link Media", emoji: "🎬" },
-    { id: "alias", label: "Alias Email", emoji: "✉️" },
-    { id: "tax", label: "Kalk. Pajak", emoji: "🧾" },
-    { id: "interest", label: "Kalk. Bunga", emoji: "💰" },
-    { id: "stats", label: "Statistik", emoji: "📊" },
-    { id: "wa", label: "WA Link", emoji: "💬" },
-    { id: "pass", label: "Password & Token", emoji: "🔐" },
-    { id: "meta", label: "Hapus Metadata", emoji: "🧹" },
+  const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: "json",     label: "JSON & Base64",    icon: <Code2 className="w-3.5 h-3.5" /> },
+    { id: "bulk",     label: "Bulk Teks",         icon: <ListOrdered className="w-3.5 h-3.5" /> },
+    { id: "media",    label: "Link Media",         icon: <Radio className="w-3.5 h-3.5" /> },
+    { id: "alias",    label: "Alias Email",        icon: <Mail className="w-3.5 h-3.5" /> },
+    { id: "tax",      label: "Kalk. Pajak",        icon: <Calculator className="w-3.5 h-3.5" /> },
+    { id: "interest", label: "Kalk. Bunga",        icon: <TrendingUp className="w-3.5 h-3.5" /> },
+    { id: "stats",    label: "Statistik",          icon: <BarChart3 className="w-3.5 h-3.5" /> },
+    { id: "wa",       label: "WA Link",            icon: <MessageCircle className="w-3.5 h-3.5" /> },
+    { id: "pass",     label: "Password & Token",   icon: <KeyRound className="w-3.5 h-3.5" /> },
+    { id: "meta",     label: "Hapus Metadata",     icon: <Eraser className="w-3.5 h-3.5" /> },
   ];
 
   const PanelCard: React.FC<{ title: string; subtitle?: string; children: React.ReactNode }> = ({ title, subtitle, children }) => (
@@ -1371,9 +1385,9 @@ const UtilityShelf: React.FC = () => {
       <div className="flex flex-wrap gap-2">
         {TABS.map(t => (
           <button key={t.id} type="button" onClick={() => setTab(t.id)}
-            className={cn("flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all",
+            className={cn("flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold border-2 transition-all",
               tab === t.id ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50")}>
-            <span>{t.emoji}</span><span>{t.label}</span>
+            {t.icon}<span>{t.label}</span>
           </button>
         ))}
       </div>
@@ -1386,18 +1400,18 @@ const UtilityShelf: React.FC = () => {
               <Textarea label="Input Teks / JSON" rows={8} value={textInput} onChange={e => setTextInput(e.target.value)} placeholder="Tempel JSON atau teks di sini…" />
               <div className="flex gap-2">
                 <Btn onClick={toJsonPretty} variant="secondary" className="flex-1 text-xs">Format JSON</Btn>
-                <Btn onClick={toBase64} variant="secondary" className="flex-1 text-xs">→ Base64</Btn>
+                <Btn onClick={toBase64} variant="secondary" className="flex-1 text-xs gap-1.5"><ArrowLeftRight className="w-3.5 h-3.5" />Ke Base64</Btn>
               </div>
             </div>
             <div className="space-y-3">
               <Textarea label="JSON Terformat" rows={8} value={jsonPretty} onChange={e => setJsonPretty(e.target.value)} placeholder="Hasil JSON rapi…" />
-              <Btn onClick={() => copyToClipboard(jsonPretty)} variant="secondary" className="w-full text-xs">📋 Salin JSON</Btn>
+              <Btn onClick={() => copyToClipboard(jsonPretty)} variant="secondary" className="w-full text-xs gap-1.5"><Copy className="w-3.5 h-3.5" />Salin JSON</Btn>
             </div>
             <div className="space-y-3">
               <Textarea label="Base64" rows={5} value={base64} onChange={e => setBase64(e.target.value)} placeholder="Base64 encode/decode…" />
               <div className="flex gap-2">
-                <Btn onClick={fromBase64} variant="secondary" className="flex-1 text-xs">← Dari Base64</Btn>
-                <Btn onClick={() => copyToClipboard(base64)} variant="secondary" className="flex-1 text-xs">📋 Salin</Btn>
+                <Btn onClick={fromBase64} variant="secondary" className="flex-1 text-xs gap-1.5"><ArrowLeftRight className="w-3.5 h-3.5" />Dari Base64</Btn>
+                <Btn onClick={() => copyToClipboard(base64)} variant="secondary" className="flex-1 text-xs gap-1.5"><Copy className="w-3.5 h-3.5" />Salin</Btn>
               </div>
             </div>
           </div>
@@ -1415,11 +1429,11 @@ const UtilityShelf: React.FC = () => {
                   <Btn key={k} onClick={() => runBulkOp(k as any)} variant="secondary" className="text-xs py-1.5">{l}</Btn>
                 ))}
               </div>
-              {bulkInfo && <p className="text-xs text-green-600 font-medium">✓ {bulkInfo}</p>}
+              {bulkInfo && <p className="text-xs text-green-600 font-medium">{bulkInfo}</p>}
             </div>
             <div className="space-y-3">
               <Textarea label="Hasil" rows={10} value={bulkOutput} onChange={e => setBulkOutput(e.target.value)} placeholder="Hasil akan tampil di sini…" />
-              <Btn onClick={() => copyToClipboard(bulkOutput)} variant="secondary" className="w-full text-xs">📋 Salin Hasil</Btn>
+              <Btn onClick={() => copyToClipboard(bulkOutput)} variant="secondary" className="w-full text-xs gap-2"><Copy className="w-3.5 h-3.5" />Salin Hasil</Btn>
             </div>
           </div>
         </PanelCard>
@@ -1430,11 +1444,11 @@ const UtilityShelf: React.FC = () => {
         <PanelCard title="Helper Link & Media" subtitle="Analisis link video/file untuk unduhan langsung">
           <div className="space-y-4 max-w-xl">
             <Input label="URL Video / File" type="url" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} placeholder="https://example.com/video.mp4" />
-            <Btn onClick={analyzeMedia} variant="secondary">🔍 Analisis Link</Btn>
+            <Btn onClick={analyzeMedia} variant="secondary" className="gap-2"><Info className="w-4 h-4" />Analisis Link</Btn>
             {mediaInfo && <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700">{mediaInfo}</div>}
             {directDownload && (
               <a href={directDownload} download className="flex items-center justify-between gap-3 bg-slate-900 text-white rounded-xl px-5 py-3 font-semibold hover:bg-slate-800 transition-colors">
-                <span>⬇ Unduh Langsung</span>
+                <span>Unduh Langsung</span>
                 <span className="text-xs text-slate-400">Buka tab baru jika gagal</span>
               </a>
             )}
@@ -1450,8 +1464,8 @@ const UtilityShelf: React.FC = () => {
             <Input label="Email Utama (opsional — untuk plus-address)" type="email" value={baseEmail} onChange={e => setBaseEmail(sanitizeText(e.target.value))} placeholder="nama@gmail.com" />
             <Input label="Domain Alternatif" value={aliasDomain} onChange={e => setAliasDomain(sanitizeText(e.target.value))} placeholder="tempmail.com" />
             <div className="flex gap-3">
-              <Btn onClick={generateAlias} className="flex-1">🎲 Buat Alamat</Btn>
-              <Btn onClick={() => copyToClipboard(aliasEmail || "", setAliasInfo)} disabled={!aliasEmail} variant="secondary" className="flex-1">📋 Salin</Btn>
+              <Btn onClick={generateAlias} className="flex-1 gap-2"><Zap className="w-4 h-4" />Buat Alamat</Btn>
+              <Btn onClick={() => copyToClipboard(aliasEmail || "", setAliasInfo)} disabled={!aliasEmail} variant="secondary" className="flex-1 gap-2"><Copy className="w-4 h-4" />Salin</Btn>
             </div>
             {aliasEmail && <div className="bg-slate-900 rounded-xl px-4 py-3 font-mono text-sm text-emerald-400 break-all">{aliasEmail}</div>}
             {aliasInfo && <p className="text-xs text-slate-500">{aliasInfo}</p>}
@@ -1478,7 +1492,7 @@ const UtilityShelf: React.FC = () => {
                 ))}
               </div>
             </div>
-            <Btn onClick={runTaxCalc} className="w-full">🧾 Hitung Pajak</Btn>
+            <Btn onClick={runTaxCalc} className="w-full gap-2"><Calculator className="w-4 h-4" />Hitung Pajak</Btn>
             {taxOutput && <pre className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 whitespace-pre-wrap">{taxOutput}</pre>}
           </div>
         </PanelCard>
@@ -1499,7 +1513,7 @@ const UtilityShelf: React.FC = () => {
                 <option value={12}>Bulanan (12x)</option>
               </Select>
             </div>
-            <Btn onClick={runInterestCalc} className="w-full">💰 Hitung Bunga</Btn>
+            <Btn onClick={runInterestCalc} className="w-full gap-2"><TrendingUp className="w-4 h-4" />Hitung Bunga</Btn>
             {interestOutput && <pre className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 whitespace-pre-wrap">{interestOutput}</pre>}
           </div>
         </PanelCard>
@@ -1510,7 +1524,7 @@ const UtilityShelf: React.FC = () => {
         <PanelCard title="Statistik Sederhana" subtitle="Mean, median, min, max, standar deviasi">
           <div className="space-y-4 max-w-lg">
             <Textarea label="Angka (pisahkan dengan spasi, koma, atau baris baru)" rows={5} value={statsInput} onChange={e => setStatsInput(e.target.value)} placeholder="10 20 30 40 50&#10;atau&#10;1, 2, 3, 4, 5" />
-            <Btn onClick={runStats} className="w-full">📊 Analisis</Btn>
+            <Btn onClick={runStats} className="w-full gap-2"><BarChart3 className="w-4 h-4" />Analisis</Btn>
             {statsOutput && <pre className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 whitespace-pre-wrap font-mono">{statsOutput}</pre>}
           </div>
         </PanelCard>
@@ -1518,19 +1532,35 @@ const UtilityShelf: React.FC = () => {
 
       {/* WA */}
       {tab === "wa" && (
-        <PanelCard title="WhatsApp Direct Link" subtitle="Buka chat WA tanpa menyimpan kontak">
-          <div className="space-y-4 max-w-lg">
-            <Input label="Nomor Telepon (dengan kode negara)" value={waPhone} onChange={e => setWaPhone(sanitizePhone(e.target.value))} placeholder="+62812xxxxxxx" />
-            <Textarea label="Pesan (opsional)" rows={4} value={waMessage} onChange={e => setWaMessage(sanitizeText(e.target.value))} placeholder="Pesan yang akan muncul otomatis di chat…" />
+        <PanelCard title="WhatsApp Direct Link" subtitle="Buka chat WA langsung tanpa perlu menyimpan kontak">
+          <div className="space-y-5">
+            <div className="grid md:grid-cols-2 gap-5">
+              <Input label="Nomor Telepon (dengan kode negara)" value={waPhone} onChange={e => setWaPhone(sanitizePhone(e.target.value))} placeholder="+62812xxxxxxx" />
+              <div>
+                <Label>Template Pesan Cepat</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {[
+                    { label: "Salam", fn: () => { const name = prompt("Nama penerima (opsional):") || ""; const safe = sanitizeText(name); setWaMessage((safe ? `Halo ${safe}, ` : "Halo, ") + "apa kabar? Saya ingin menghubungi terkait sesuatu."); } },
+                    { label: "Follow-up", fn: () => { const inv = sanitizeText(prompt("Nomor invoice:") || ""); const amt = sanitizeText(prompt("Jumlah (opsional):") || ""); setWaMessage(`Halo, ini tindak lanjut terkait invoice ${inv}. ${amt ? `Total ${amt}. ` : ""}Mohon konfirmasi penerimaan atau bila ada pertanyaan.`); } },
+                    { label: "Konfirmasi Bayar", fn: () => { const inv = sanitizeText(prompt("Nomor invoice/kode:") || ""); setWaMessage(`Halo, pembayaran untuk ${inv} telah kami terima. Terima kasih! Jika ada yang perlu dibantu lagi, kabari ya.`); } },
+                    { label: "Kirim Alamat", fn: () => { const addr = sanitizeText(prompt("Alamat/tautan lokasi:") || ""); const time = sanitizeText(prompt("Estimasi waktu (opsional):") || ""); setWaMessage(`Halo, berikut alamat/lokasi tujuan: ${addr}. ${time ? `Estimasi waktu: ${time}. ` : ""}Terima kasih.`); } },
+                    { label: "Reminder", fn: () => { const date = sanitizeText(prompt("Tanggal (mis. 12/03/2026):") || ""); const hour = sanitizeText(prompt("Jam (opsional):") || ""); const topic = sanitizeText(prompt("Topik/agenda (opsional):") || ""); setWaMessage(`Halo, mengingatkan jadwal pada ${date}${hour ? ` pukul ${hour}` : ""}${topic ? ` untuk ${topic}` : ""}. Terima kasih.`); } },
+                  ].map(t => (
+                    <Btn key={t.label} onClick={t.fn} variant="secondary" className="text-xs py-1.5">{t.label}</Btn>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <Textarea label="Pesan (opsional)" rows={4} value={waMessage} onChange={e => setWaMessage(sanitizeText(e.target.value))} placeholder="Tulis pesan Anda di sini, atau gunakan template di atas…" />
             <div className="flex gap-3">
-              <Btn onClick={buildWa} className="flex-1">🔗 Buat Link WA</Btn>
-              {waLink && <Btn onClick={() => copyToClipboard(waLink, setAliasInfo)} variant="secondary" className="flex-1">📋 Salin Link</Btn>}
+              <Btn onClick={buildWa} className="flex-1 gap-2"><MessageCircle className="w-4 h-4" />Buat Link WA</Btn>
+              {waLink && <Btn onClick={() => copyToClipboard(waLink, setAliasInfo)} variant="secondary" className="flex-1 gap-2"><Copy className="w-4 h-4" />Salin Link</Btn>}
             </div>
             {waLink && (
               <div className="space-y-2">
                 <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-mono text-xs text-slate-700 break-all">{waLink}</div>
                 <a href={waLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-green-500 text-white rounded-xl py-3 font-semibold hover:bg-green-600 transition-colors">
-                  💬 Buka di WhatsApp
+                  <MessageCircle className="w-4 h-4" /> Buka di WhatsApp
                 </a>
               </div>
             )}
@@ -1543,7 +1573,7 @@ const UtilityShelf: React.FC = () => {
         <PanelCard title="Password & Token Generator" subtitle="Berbasis Web Crypto API — aman dan acak">
           <div className="grid lg:grid-cols-2 gap-8">
             <div className="space-y-4">
-              <p className="text-sm font-bold text-slate-700">🔐 Password Generator</p>
+              <p className="text-sm font-bold text-slate-700">Password Generator</p>
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Panjang Password" type="number" min={6} max={128} value={pwLength} onChange={e => setPwLength(parseInt(e.target.value) || 16)} />
                 <div>
@@ -1557,16 +1587,16 @@ const UtilityShelf: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <Btn onClick={generatePassword} className="w-full">🎲 Buat Password</Btn>
+              <Btn onClick={generatePassword} className="w-full gap-2"><KeyRound className="w-4 h-4" />Buat Password</Btn>
               {pwOutput && (
                 <div className="space-y-2">
                   <div className="bg-slate-900 text-green-400 font-mono text-sm rounded-xl px-4 py-3 break-all">{pwOutput}</div>
-                  <Btn onClick={() => copyToClipboard(pwOutput)} variant="secondary" className="w-full">📋 Salin Password</Btn>
+                  <Btn onClick={() => copyToClipboard(pwOutput)} variant="secondary" className="w-full gap-2"><Copy className="w-4 h-4" />Salin Password</Btn>
                 </div>
               )}
             </div>
             <div className="space-y-4">
-              <p className="text-sm font-bold text-slate-700">🔑 Token Generator</p>
+              <p className="text-sm font-bold text-slate-700">Token Generator</p>
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Panjang (byte)" type="number" min={4} max={128} value={tokenBytes} onChange={e => setTokenBytes(parseInt(e.target.value) || 32)} />
                 <Select label="Format" value={tokenFormat} onChange={e => setTokenFormat(e.target.value as any)}>
@@ -1575,11 +1605,11 @@ const UtilityShelf: React.FC = () => {
                   <option value="urlsafe">URL-safe Base64</option>
                 </Select>
               </div>
-              <Btn onClick={generateToken} className="w-full">🎲 Buat Token</Btn>
+              <Btn onClick={generateToken} className="w-full gap-2"><KeyRound className="w-4 h-4" />Buat Token</Btn>
               {tokenOutput && (
                 <div className="space-y-2">
                   <div className="bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl px-4 py-3 break-all">{tokenOutput}</div>
-                  <Btn onClick={() => copyToClipboard(tokenOutput)} variant="secondary" className="w-full">📋 Salin Token</Btn>
+                  <Btn onClick={() => copyToClipboard(tokenOutput)} variant="secondary" className="w-full gap-2"><Copy className="w-4 h-4" />Salin Token</Btn>
                 </div>
               )}
             </div>
@@ -1592,7 +1622,7 @@ const UtilityShelf: React.FC = () => {
       {tab === "meta" && (
         <PanelCard title="Hapus Metadata Gambar" subtitle="EXIF, GPS, dan data sensitif lainnya dihapus via re-encode canvas">
           <div className="space-y-4 max-w-lg">
-            <Dropzone onFiles={f => setMetaFiles(f.filter(f2 => f2.type.startsWith("image/")))} accept="image/*" label="Drop gambar di sini" sublabel="Bisa pilih beberapa sekaligus" icon="🖼" />
+            <Dropzone onFiles={f => setMetaFiles(f.filter(f2 => f2.type.startsWith("image/")))} accept="image/*" label="Drop gambar di sini" sublabel="Bisa pilih beberapa sekaligus" icon={<Image className="w-8 h-8" />} />
             {metaFiles.length > 0 && (
               <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
                 <p className="text-sm font-semibold text-slate-700">{metaFiles.length} gambar dipilih</p>
@@ -1601,8 +1631,8 @@ const UtilityShelf: React.FC = () => {
                 </ul>
               </div>
             )}
-            <Btn onClick={runMetaClean} disabled={!metaFiles.length} className="w-full">🧹 Bersihkan Metadata</Btn>
-            {metaInfo && <div className={cn("text-sm rounded-xl px-4 py-3 border", metaInfo.startsWith("✓") ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200")}>{metaInfo}</div>}
+            <Btn onClick={runMetaClean} disabled={!metaFiles.length} className="w-full gap-2"><Eraser className="w-4 h-4" />Bersihkan Metadata</Btn>
+            {metaInfo && <div className={cn("text-sm rounded-xl px-4 py-3 border", metaInfo.startsWith("Gagal") ? "bg-red-50 text-red-700 border-red-200" : "bg-green-50 text-green-700 border-green-200")}>{metaInfo}</div>}
             <p className="text-xs text-slate-400">File diunduh ulang — tanpa metadata EXIF. Tidak ada yang dikirim ke server.</p>
           </div>
         </PanelCard>
@@ -1634,7 +1664,7 @@ const PrivacyPage: React.FC = () => (
       <p>Sebagai Digital Tool Studio, sebagian besar alat kami bekerja di sisi klien (browser). Kami tidak mengumpulkan data pribadi sensitif kecuali Anda memberikannya secara sukarela.</p>
     </PolicySection>
     <PolicySection num="2" title="Log Files & Analytics">
-      <p>Kami menggunakan log standar melalui infrastruktur Vercel yang mencakup alamat IP, jenis browser, ISP, dan stempel waktu untuk analisis performa web.</p>
+      <p>Kami menggunakan log standar untuk analisis performa web yang mencakup alamat IP, jenis browser, ISP, dan stempel waktu akses.</p>
     </PolicySection>
     <PolicySection num="3" title="Keamanan Data (WUG Secure Standard)">
       <p>Kami menerapkan sistem WUG Secure System untuk memastikan setiap input data diproses dengan enkripsi standar dan tidak disalahgunakan pihak ketiga.</p>
@@ -1692,7 +1722,7 @@ export const App: React.FC = () => (
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<Home />} />
-        <Route path="qr" element={<PageShell badge="Kode" title="QR & Barcode Studio" subtitle="Buat QR code multi-template dengan logo & warna kustom, atau barcode berbagai format — real-time, offline, di browser."><QRBarcodeStudio /></PageShell>} />
+        <Route path="qr" element={<PageShell badge="Kode" title="QR & Barcode Studio" subtitle="Buat QR code multi-template dengan logo & warna kustom, atau barcode berbagai format — preview real-time, semua fitur lengkap."><QRBarcodeStudio /></PageShell>} />
         <Route path="pdf" element={<PageShell badge="Dokumen" title="PDF Lab – Suite" subtitle="9 mode pemrosesan PDF: gabung, pecah, kompres, ekstrak, hapus, putar, atur halaman, gambar→PDF, dan teks→PDF."><PdfTools /></PageShell>} />
         <Route path="docs" element={<PageShell badge="Dokumen" title="Doc Studio" subtitle="Editor dokumen ringan dengan ekspor .docx, .pdf, .txt — dilengkapi Find & Replace, template cepat, dan snapshot sesi."><DocTools /></PageShell>} />
         <Route path="image" element={<PageShell badge="Gambar" title="Image Lab" subtitle="Kompres, ubah ukuran, konversi format (JPG/PNG/WEBP), dan putar gambar — batch processing langsung di browser."><ImageTools /></PageShell>} />
