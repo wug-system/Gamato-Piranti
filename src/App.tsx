@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Layout from "./components/layout/Layout";
+import Home from "./pages/Home";
+import About from "./pages/About";
 import QRCode from "qrcode";
 import JsBarcode from "jsbarcode";
 import { PDFDocument, StandardFonts, rgb, degrees } from "pdf-lib";
@@ -17,20 +20,21 @@ const Card: React.FC<{
 }> = ({ title, description, className, children }) => (
   <section
     className={cn(
-      "rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm",
-      "transition-all hover:border-slate-300 hover:shadow-md",
+      "rounded-2xl border border-slate-200 bg-white p-6 md:p-8 shadow-sm",
+      "transition-shadow hover:shadow-md",
       className
     )}
   >
-    <header className="mb-4 flex items-center justify-between gap-3">
+    <header className="mb-6 pb-5 border-b border-slate-100 flex items-start justify-between gap-3">
       <div>
-        <h2 className="text-base font-semibold tracking-tight text-slate-900">
+        <h2 className="text-lg font-bold tracking-tight text-slate-900">
           {title}
         </h2>
         {description && (
-          <p className="mt-1 text-xs text-slate-500">{description}</p>
+          <p className="mt-1 text-sm text-slate-500">{description}</p>
         )}
       </div>
+      <span className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-green-400" title="Alat aktif" />
     </header>
     <div>{children}</div>
   </section>
@@ -42,7 +46,7 @@ const Label: React.FC<{ htmlFor?: string; children: React.ReactNode }> = ({
 }) => (
   <label
     htmlFor={htmlFor}
-    className="text-xs font-medium tracking-wide text-slate-600"
+    className="text-xs font-semibold tracking-wide text-slate-700"
   >
     {children}
   </label>
@@ -56,9 +60,10 @@ const Input: React.FC<
     <input
       {...props}
       className={cn(
-        "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm",
-        "focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5",
-        "disabled:cursor-not-allowed disabled:bg-slate-50",
+        "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm",
+        "focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10",
+        "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
+        "placeholder:text-slate-400",
         className
       )}
     />
@@ -73,8 +78,8 @@ const Select: React.FC<
     <select
       {...props}
       className={cn(
-        "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 shadow-sm",
-        "focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5",
+        "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm",
+        "focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10",
         className
       )}
     >
@@ -91,9 +96,10 @@ const Textarea: React.FC<
     <textarea
       {...props}
       className={cn(
-        "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 shadow-sm",
-        "focus:border-slate-900/60 focus:outline-none focus:ring-2 focus:ring-slate-900/5",
+        "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm",
+        "focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10",
         "disabled:cursor-not-allowed disabled:bg-slate-50",
+        "placeholder:text-slate-400",
         className
       )}
     />
@@ -106,11 +112,11 @@ const Button: React.FC<
   <button
     {...props}
     className={cn(
-      "inline-flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium tracking-wide",
-      "transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/5",
+      "inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold",
+      "transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40",
       variant === "solid"
-        ? "bg-slate-900 text-slate-50 shadow-sm hover:bg-slate-800 disabled:bg-slate-300 disabled:text-slate-100"
-        : "bg-transparent text-slate-700 hover:bg-slate-100 disabled:text-slate-300",
+        ? "bg-slate-900 text-white shadow-sm hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400"
+        : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 disabled:text-slate-300 disabled:border-slate-100",
       className
     )}
   >
@@ -664,7 +670,7 @@ const QRBarcodeStudio: React.FC = () => {
             </div>
             <div className="mt-3 flex justify-between text-[11px] text-slate-400">
               <span>{mode === "qr" ? "PNG 300dpi" : barcodeFormat}</span>
-              <span>◈ Tanpa Tracking</span>
+              <span>Offline first – tanpa tracking</span>
             </div>
           </div>
 
@@ -3246,496 +3252,166 @@ const UtilityShelf: React.FC = () => {
 
 // ---------- Static Pages: Privacy & Terms ----------
 
-const PrivacyPage: React.FC = () => (
-  <Card title="Privacy Policy for Gamato Piranti" description="Terakhir Diperbarui: 2 Maret 2026">
-    <div className="space-y-3 text-[13px] leading-relaxed text-slate-700">
-      <p>
-        Di Gamato Piranti, yang beralamat di https://gamato-piranti.vercel.app/, salah satu prioritas utama kami adalah privasi pengunjung kami. Dokumen Kebijakan Privasi ini berisi jenis informasi yang dikumpulkan dan dicatat oleh Gamato Piranti dan bagaimana kami menggunakannya.
-      </p>
-      <div className="space-y-2">
-        <p className="font-semibold text-slate-900">1. Informasi yang Kami Kumpulkan</p>
-        <p>
-          Sebagai Digital Tool Studio, sebagian besar alat kami bekerja di sisi klien (browser). Kami tidak secara sengaja mengumpulkan data pribadi sensitif kecuali jika Anda memberikannya secara sukarela melalui formulir kontak.
-        </p>
-      </div>
-      <div className="space-y-2">
-        <p className="font-semibold text-slate-900">2. Log Files & Analytics</p>
-        <p>
-          Gamato Piranti mengikuti prosedur standar penggunaan file log. Informasi yang dikumpulkan termasuk alamat protokol internet (IP), jenis browser, Penyedia Layanan Internet (ISP), stempel tanggal dan waktu, serta halaman rujukan. Ini dilakukan melalui infrastruktur Vercel untuk analisis performa web.
-        </p>
-      </div>
-      <div className="space-y-2">
-        <p className="font-semibold text-slate-900">3. Keamanan Data (WUG Secure Standard)</p>
-        <p>
-          Kami menerapkan sistem keamanan WUG Secure System untuk memastikan bahwa setiap input data pada tools kami diproses dengan enkripsi standar dan tidak disalahgunakan oleh pihak ketiga.
-        </p>
-      </div>
-      <div className="space-y-2">
-        <p className="font-semibold text-slate-900">4. Kebijakan Pihak Ketiga</p>
-        <p>
-          Kebijakan Privasi Gamato Piranti tidak berlaku untuk pengiklan atau situs web lain. Kami menyarankan Anda untuk berkonsultasi dengan Kebijakan Privasi masing-masing dari server pihak ketiga tersebut untuk informasi lebih rinci.
-        </p>
-      </div>
-      <div className="pt-2">
-        <a href="#/" className="text-xs font-medium text-slate-700 underline hover:text-slate-900">Kembali ke beranda</a>
-      </div>
+const PolicySection: React.FC<{ num: string; title: string; children: React.ReactNode }> = ({ num, title, children }) => (
+  <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-3">
+    <div className="flex items-center gap-3">
+      <span className="flex-shrink-0 w-8 h-8 rounded-xl bg-slate-900 text-white text-sm font-bold flex items-center justify-center">{num}</span>
+      <h3 className="font-bold text-slate-900 text-base">{title}</h3>
     </div>
-  </Card>
+    <div className="text-sm leading-relaxed text-slate-600 pl-11">{children}</div>
+  </div>
+);
+
+const PrivacyPage: React.FC = () => (
+  <div className="max-w-3xl mx-auto space-y-6">
+    <div className="text-center space-y-3 pb-2">
+      <span className="inline-block text-[10px] font-bold uppercase tracking-[0.2em] text-blue-600 bg-blue-50 px-3 py-1 rounded-full">Kebijakan</span>
+      <h1 className="text-3xl font-bold text-slate-900">Privacy Policy</h1>
+      <p className="text-slate-500 text-sm">Gamato Piranti · Terakhir diperbarui: 2 Maret 2026</p>
+      <p className="text-slate-600 text-sm max-w-xl mx-auto leading-relaxed">
+        Di Gamato Piranti, privasi pengunjung adalah prioritas utama kami. Dokumen ini menjelaskan jenis informasi yang kami kumpulkan dan bagaimana kami menggunakannya.
+      </p>
+    </div>
+    <PolicySection num="1" title="Informasi yang Kami Kumpulkan">
+      <p>Sebagai Digital Tool Studio, sebagian besar alat kami bekerja di sisi klien (browser). Kami tidak secara sengaja mengumpulkan data pribadi sensitif kecuali jika Anda memberikannya secara sukarela melalui formulir kontak.</p>
+    </PolicySection>
+    <PolicySection num="2" title="Log Files & Analytics">
+      <p>Gamato Piranti mengikuti prosedur standar penggunaan file log. Informasi yang dikumpulkan meliputi alamat IP, jenis browser, ISP, stempel waktu, serta halaman rujukan. Ini dilakukan melalui infrastruktur Vercel untuk analisis performa web.</p>
+    </PolicySection>
+    <PolicySection num="3" title="Keamanan Data (WUG Secure Standard)">
+      <p>Kami menerapkan sistem keamanan WUG Secure System untuk memastikan bahwa setiap input data pada tools kami diproses dengan enkripsi standar dan tidak disalahgunakan oleh pihak ketiga.</p>
+    </PolicySection>
+    <PolicySection num="4" title="Kebijakan Pihak Ketiga">
+      <p>Kebijakan Privasi Gamato Piranti tidak berlaku untuk pengiklan atau situs web lain. Kami menyarankan Anda untuk berkonsultasi dengan Kebijakan Privasi masing-masing dari server pihak ketiga tersebut untuk informasi lebih rinci.</p>
+    </PolicySection>
+  </div>
 );
 
 const TermsPage: React.FC = () => (
-  <Card title="Terms of Service for Gamato Piranti" description="Terakhir Diperbarui: 2 Maret 2026">
-    <div className="space-y-3 text-[13px] leading-relaxed text-slate-700">
-      <div className="space-y-2">
-        <p className="font-semibold text-slate-900">1. Penerimaan Ketentuan</p>
-        <p>
-          Dengan mengakses situs web ini, kami menganggap Anda menerima syarat dan ketentuan ini secara penuh. Jangan terus menggunakan Gamato Piranti jika Anda tidak menerima semua syarat dan ketentuan yang tercantum di halaman ini.
-        </p>
-      </div>
-      <div className="space-y-2">
-        <p className="font-semibold text-slate-900">2. Lisensi Penggunaan</p>
-        <p>
-          Gamato Piranti memberikan izin untuk menggunakan alat digital yang tersedia untuk penggunaan pribadi maupun komersial ringan. Namun, Anda dilarang:
-        </p>
-        <ul className="list-disc pl-5">
-          <li>Menyalin atau memodifikasi materi tanpa izin.</li>
-          <li>Menggunakan tools untuk tujuan ilegal atau melanggar hukum.</li>
-          <li>Melakukan tindakan yang merusak integritas infrastruktur server kami.</li>
-        </ul>
-      </div>
-      <div className="space-y-2">
-        <p className="font-semibold text-slate-900">3. Batasan Tanggung Jawab</p>
-        <p>
-          Semua alat di Gamato Piranti disediakan "sebagaimana adanya" (as is). Kami tidak memberikan jaminan bahwa alat akan selalu bebas dari kesalahan atau gangguan. Gamato Piranti tidak bertanggung jawab atas kerugian yang timbul dari penggunaan atau ketidakmampuan menggunakan layanan kami.
-        </p>
-      </div>
-      <div className="space-y-2">
-        <p className="font-semibold text-slate-900">4. Perubahan Layanan</p>
-        <p>
-          Sebagai studio inovasi digital, kami berhak menambah atau menghapus fitur/tools tanpa pemberitahuan sebelumnya demi pengembangan kualitas layanan.
-        </p>
-      </div>
-      <div className="pt-2">
-        <a href="#/" className="text-xs font-medium text-slate-700 underline hover:text-slate-900">Kembali ke beranda</a>
-      </div>
+  <div className="max-w-3xl mx-auto space-y-6">
+    <div className="text-center space-y-3 pb-2">
+      <span className="inline-block text-[10px] font-bold uppercase tracking-[0.2em] text-blue-600 bg-blue-50 px-3 py-1 rounded-full">Kebijakan</span>
+      <h1 className="text-3xl font-bold text-slate-900">Terms of Service</h1>
+      <p className="text-slate-500 text-sm">Gamato Piranti · Terakhir diperbarui: 2 Maret 2026</p>
+      <p className="text-slate-600 text-sm max-w-xl mx-auto leading-relaxed">
+        Dengan mengakses dan menggunakan Gamato Piranti, Anda menyetujui ketentuan layanan berikut ini secara penuh.
+      </p>
     </div>
-  </Card>
+    <PolicySection num="1" title="Penerimaan Ketentuan">
+      <p>Dengan mengakses situs web ini, kami menganggap Anda menerima syarat dan ketentuan ini secara penuh. Jangan terus menggunakan Gamato Piranti jika Anda tidak menerima semua ketentuan yang tercantum di halaman ini.</p>
+    </PolicySection>
+    <PolicySection num="2" title="Lisensi Penggunaan">
+      <p className="mb-3">Gamato Piranti memberikan izin untuk menggunakan alat digital yang tersedia untuk penggunaan pribadi maupun komersial ringan. Namun, Anda dilarang:</p>
+      <ul className="space-y-1.5">
+        {[
+          "Menyalin atau memodifikasi materi tanpa izin.",
+          "Menggunakan tools untuk tujuan ilegal atau melanggar hukum.",
+          "Melakukan tindakan yang merusak integritas infrastruktur server kami.",
+        ].map((item) => (
+          <li key={item} className="flex items-start gap-2">
+            <span className="mt-1 w-1.5 h-1.5 rounded-full bg-rose-400 flex-shrink-0" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </PolicySection>
+    <PolicySection num="3" title="Batasan Tanggung Jawab">
+      <p>Semua alat di Gamato Piranti disediakan "sebagaimana adanya" (as is). Kami tidak memberikan jaminan bahwa alat akan selalu bebas dari kesalahan atau gangguan. Gamato Piranti tidak bertanggung jawab atas kerugian yang timbul dari penggunaan atau ketidakmampuan menggunakan layanan kami.</p>
+    </PolicySection>
+    <PolicySection num="4" title="Perubahan Layanan">
+      <p>Sebagai studio inovasi digital, kami berhak menambah atau menghapus fitur/tools tanpa pemberitahuan sebelumnya demi pengembangan kualitas layanan.</p>
+    </PolicySection>
+  </div>
 );
 
-// ---------- Layout & App Shell ----------
+// ---------- Page wrappers ----------
 
-type SectionId = "qr" | "pdf" | "doc" | "img" | "util";
-
-const AppHeader: React.FC<{
-  current: SectionId;
-  onChange: (id: SectionId) => void;
-}> = ({ current, onChange }) => {
-  const [openGroup, setOpenGroup] = useState<
-    null | "kode" | "dokumen" | "gambar" | "util"
-  >(null);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const navRef = useRef<HTMLDivElement | null>(null);
-
-  // Close desktop dropdown when clicking outside nav
-  useEffect(() => {
-    const onDocClick = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (navRef.current && !navRef.current.contains(target)) {
-        setOpenGroup(null);
-      }
-    };
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, []);
-
-  // Lock scroll when mobile menu is open
-  useEffect(() => {
-    const prevBody = document.body.style.overflow;
-    const prevHtml = document.documentElement.style.overflow;
-    if (mobileOpen) {
-      document.body.style.overflow = "hidden";
-      document.documentElement.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = prevBody || "";
-      document.documentElement.style.overflow = prevHtml || "";
-    }
-    return () => {
-      document.body.style.overflow = prevBody || "";
-      document.documentElement.style.overflow = prevHtml || "";
-    };
-  }, [mobileOpen]);
-
-  const navButtonCls = (active: boolean) =>
-    cn(
-      "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium tracking-[0.16em] uppercase transition",
-      active
-        ? "bg-slate-900 text-slate-50 shadow-sm"
-        : "text-slate-600 hover:bg-slate-100"
-    );
-
-  return (
-    <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-        {/* Brand */}
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-900 text-slate-50 shadow-sm">
-            <span className="text-[14px] font-semibold">G</span>
-          </div>
-          <div className="leading-tight">
-            <p className="text-xs font-semibold tracking-tight text-slate-900">
-              Gamato Piranti
-            </p>
-            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-              Digital Tool Studio
-            </p>
-          </div>
-        </div>
-
-        {/* Desktop nav (center) */}
-        <nav ref={navRef} className="relative hidden items-center justify-center md:flex">
-          <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50/80 px-2 py-1 text-[11px] shadow-sm">
-            {/* Kode */}
-            <div className="relative">
-              <button
-                type="button"
-                className={navButtonCls(openGroup === "kode" || current === "qr")}
-                onClick={() => setOpenGroup((prev) => (prev === "kode" ? null : "kode"))}
-              >
-                Kode
-                <span className="text-[10px] text-slate-400">▾</span>
-              </button>
-              {openGroup === "kode" && (
-                <div className="absolute left-1/2 top-[110%] z-[200] w-[min(92vw,340px)] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 text-[12px] leading-6 shadow-2xl">
-                  <div className="space-y-1.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onChange("qr");
-                        setOpenGroup(null);
-                      }}
-                      className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
-                    >
-                      <span>QR & Barcode Studio</span>
-                      <span className="text-[9px] text-slate-400">Utama</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Dokumen */}
-            <div className="relative">
-              <button
-                type="button"
-                className={navButtonCls(openGroup === "dokumen" || current === "pdf" || current === "doc")}
-                onClick={() => setOpenGroup((prev) => (prev === "dokumen" ? null : "dokumen"))}
-              >
-                Dokumen
-                <span className="text-[10px] text-slate-400">▾</span>
-              </button>
-              {openGroup === "dokumen" && (
-                <div className="absolute left-1/2 top-[110%] z-[200] w-[min(92vw,380px)] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 text-[12px] leading-6 shadow-2xl">
-                  <div className="space-y-1.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onChange("pdf");
-                        setOpenGroup(null);
-                      }}
-                      className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
-                    >
-                      <span>PDF Lab – Suite</span>
-                      <span className="text-[9px] text-slate-400">Toolkit lengkap</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onChange("doc");
-                        setOpenGroup(null);
-                      }}
-                      className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
-                    >
-                      <span>Doc Studio</span>
-                      <span className="text-[9px] text-slate-400">.docx & teks</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Gambar */}
-            <div className="relative">
-              <button
-                type="button"
-                className={navButtonCls(openGroup === "gambar" || current === "img")}
-                onClick={() => setOpenGroup((prev) => (prev === "gambar" ? null : "gambar"))}
-              >
-                Gambar
-                <span className="text-[10px] text-slate-400">▾</span>
-              </button>
-              {openGroup === "gambar" && (
-                <div className="absolute left-1/2 top-[110%] z-[200] w-[min(92vw,340px)] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 text-[12px] leading-6 shadow-2xl">
-                  <div className="space-y-1.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onChange("img");
-                        setOpenGroup(null);
-                      }}
-                      className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
-                    >
-                      <span>Image Lab</span>
-                      <span className="text-[9px] text-slate-400">Kompres & ubah</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Utilitas */}
-            <div className="relative">
-              <button
-                type="button"
-                className={navButtonCls(openGroup === "util" || current === "util")}
-                onClick={() => setOpenGroup((prev) => (prev === "util" ? null : "util"))}
-              >
-                Utilitas
-                <span className="text-[10px] text-slate-400">▾</span>
-              </button>
-              {openGroup === "util" && (
-                <div className="absolute left-1/2 top-[110%] z-[200] w-[min(92vw,380px)] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-3 text-[12px] leading-6 shadow-2xl">
-                  <div className="space-y-1.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onChange("util");
-                        setOpenGroup(null);
-                      }}
-                      className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
-                    >
-                      <span>Rak Utilitas</span>
-                      <span className="text-[9px] text-slate-400">JSON, bulk & link</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </nav>
-
-        {/* Right side: desktop hint + mobile burger */}
-        <div className="flex items-center gap-2">
-          <div className="hidden text-right text-[10px] text-slate-400 md:block">
-            <p>Tanpa Login</p>
-          </div>
-          <button
-            type="button"
-            aria-label="Buka menu"
-            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-700 shadow-sm hover:bg-slate-50 md:hidden"
-            onClick={() => setMobileOpen(true)}
-          >
-            <span className="block h-0.5 w-5 bg-slate-900"></span>
-            <span className="mt-1 block h-0.5 w-5 bg-slate-900"></span>
-            <span className="mt-1 block h-0.5 w-5 bg-slate-900"></span>
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile drawer (portal to body to avoid clipping by header/backdrop) */}
-      {mobileOpen &&
-        createPortal(
-          <div className="fixed inset-0 z-[9999] md:hidden" role="dialog" aria-modal="true">
-            <div
-              className="absolute inset-0 bg-slate-900/50"
-              onClick={() => setMobileOpen(false)}
-            />
-            <div className="absolute inset-0 flex">
-              <div className="ml-auto h-full w-full max-w-full overflow-y-auto bg-white p-0 shadow-xl">
-                <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur">
-                  <p className="text-sm font-semibold text-slate-900">Menu</p>
-                  <button
-                    type="button"
-                    aria-label="Tutup menu"
-                    className="rounded-full p-2 text-slate-600 hover:bg-slate-100"
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    <span className="block h-5 w-5">✕</span>
-                  </button>
-                </div>
-                <div className="space-y-4 p-4 text-[13px]">
-                  <div>
-                    <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">Kode</p>
-                    <button
-                      className="flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-3 text-left text-slate-700 hover:bg-slate-50"
-                      onClick={() => {
-                        onChange("qr");
-                        setMobileOpen(false);
-                      }}
-                    >
-                      <span>QR & Barcode Studio</span>
-                      {current === "qr" && <span className="text-[10px] text-slate-400">Aktif</span>}
-                    </button>
-                  </div>
-
-                  <div>
-                    <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">Dokumen</p>
-                    <div className="space-y-2">
-                      <button
-                        className="flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-3 text-left text-slate-700 hover:bg-slate-50"
-                        onClick={() => {
-                          onChange("pdf");
-                          setMobileOpen(false);
-                        }}
-                      >
-                        <span>PDF Lab – Suite</span>
-                        {current === "pdf" && <span className="text-[10px] text-slate-400">Aktif</span>}
-                      </button>
-                      <button
-                        className="flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-3 text-left text-slate-700 hover:bg-slate-50"
-                        onClick={() => {
-                          onChange("doc");
-                          setMobileOpen(false);
-                        }}
-                      >
-                        <span>Doc Studio</span>
-                        {current === "doc" && <span className="text-[10px] text-slate-400">Aktif</span>}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">Gambar</p>
-                    <button
-                      className="flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-3 text-left text-slate-700 hover:bg-slate-50"
-                      onClick={() => {
-                        onChange("img");
-                        setMobileOpen(false);
-                      }}
-                    >
-                      <span>Image Lab</span>
-                      {current === "img" && <span className="text-[10px] text-slate-400">Aktif</span>}
-                    </button>
-                  </div>
-
-                  <div>
-                    <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">Utilitas</p>
-                    <button
-                      className="flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-3 text-left text-slate-700 hover:bg-slate-50"
-                      onClick={() => {
-                        onChange("util");
-                        setMobileOpen(false);
-                      }}
-                    >
-                      <span>Rak Utilitas</span>
-                      {current === "util" && <span className="text-[10px] text-slate-400">Aktif</span>}
-                    </button>
-                  </div>
-
-                  <div className="pt-2">
-                    <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">Kebijakan</p>
-                    <div className="flex gap-2">
-                      <a
-                        href="#/privacy"
-                        className="flex-1 rounded-xl border border-slate-200 px-3 py-3 text-center text-[12px] text-slate-700 hover:bg-slate-50"
-                        onClick={() => setMobileOpen(false)}
-                      >
-                        Privacy Policy
-                      </a>
-                      <a
-                        href="#/terms"
-                        className="flex-1 rounded-xl border border-slate-200 px-3 py-3 text-center text-[12px] text-slate-700 hover:bg-slate-50"
-                        onClick={() => setMobileOpen(false)}
-                      >
-                        Terms
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
-    </header>
-  );
-};
-
-export const App: React.FC = () => {
-  const [route, setRoute] = useState<'home' | 'privacy' | 'terms'>(() => {
-    const hash = window.location.hash.replace('#', '');
-    if (hash.startsWith('/privacy')) return 'privacy';
-    if (hash.startsWith('/terms')) return 'terms';
-    return 'home';
-  });
-
-  useEffect(() => {
-    const onHash = () => {
-      const hash = window.location.hash.replace('#', '');
-      if (hash.startsWith('/privacy')) setRoute('privacy');
-      else if (hash.startsWith('/terms')) setRoute('terms');
-      else setRoute('home');
-    };
-    window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
-  }, []);
-
-  const [section, setSection] = useState<SectionId>("qr");
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 text-slate-900">
-      <AppHeader current={section} onChange={setSection} />
-
-      <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 pb-10">
-        {route !== 'home' ? (
-          route === 'privacy' ? (
-            <PrivacyPage />
-          ) : (
-            <TermsPage />
-          )
-        ) : (
-          <>
-            <section className="rounded-2xl bg-slate-900 px-5 py-4 text-slate-50 shadow-lg shadow-slate-900/40 md:px-7 md:py-5">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
-                    Studio alat digital
-                  </p>
-                  <h1 className="mt-1 text-xl font-semibold tracking-tight md:text-2xl">
-                    Satu kanvas, banyak alat. Tanpa ribet.
-                  </h1>
-                  <p className="mt-1.5 max-w-xl text-[12px] text-slate-300">
-                    Gamato Piranti merapikan pekerjaan harian: dari QR code, PDF, gambar, sampai dokumen .docx. Sederhana, modern, dan penuh alat yang benar-benar terpakai.
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-2 text-right text-[11px] text-slate-300">
-                  <Badge>Browser Native</Badge>
-                  <p>Semua diproses di perangkat Anda.</p>
-                </div>
-              </div>
-            </section>
-
-            {section === "qr" && <QRBarcodeStudio />}
-            {section === "pdf" && <PdfTools />}
-            {section === "doc" && <DocTools />}
-            {section === "img" && <ImageTools />}
-            {section === "util" && <UtilityShelf />}
-          </>
-        )}
-
-        <footer className="mt-4 flex flex-col justify-between gap-3 border-t border-slate-200 pt-4 text-[11px] text-slate-500 md:flex-row md:items-center">
-          <p>
-            © {new Date().getFullYear()} WisDev | Gamato Piranti | Fokus ke utilitas.
-          </p>
-          <div className="flex items-center justify-center gap-4 text-center">
-            <a href="#/privacy" className="hover:text-slate-700">Privacy Policy</a>
-            <span className="text-slate-300">•</span>
-            <a href="#/terms" className="hover:text-slate-700">Terms of Service</a>
-          </div>
-          <p className="text-slate-400">
-            Dibangun dengan ❤ | Ditenagai oleh Vercel.
-          </p>
-        </footer>
-      </main>
+const pageWrap = (
+  badge: string,
+  title: string,
+  subtitle: string,
+  children: React.ReactNode
+) => (
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="space-y-1">
+      <span className="inline-block text-[10px] font-bold uppercase tracking-[0.2em] text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+        {badge}
+      </span>
+      <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{title}</h1>
+      <p className="text-slate-500 text-sm max-w-xl">{subtitle}</p>
     </div>
+    {children}
+  </div>
+);
+
+const QRBarcodePage: React.FC = () =>
+  pageWrap(
+    "Kode",
+    "QR & Barcode Studio",
+    "Buat QR code multi-template dengan logo kustom, atau barcode berbagai format — semuanya offline di browser.",
+    <QRBarcodeStudio />
   );
-};
+
+const PdfPage: React.FC = () =>
+  pageWrap(
+    "Dokumen",
+    "PDF Lab – Suite",
+    "Toolkit PDF lengkap: kompres, gabung, pecah halaman, atur ulang, ekstrak, rotate, dan konversi.",
+    <PdfTools />
+  );
+
+const DocsPage: React.FC = () =>
+  pageWrap(
+    "Dokumen",
+    "Doc Studio",
+    "Editor dokumen ringan dengan ekspor .docx, .pdf, dan .txt. Lengkap dengan Find & Replace, template cepat, dan snapshot sesi.",
+    <DocTools />
+  );
+
+const ImagePage: React.FC = () =>
+  pageWrap(
+    "Gambar",
+    "Image Lab",
+    "Kompres, ubah ukuran, konversi format (JPG/PNG/WEBP), dan putar gambar — batch processing langsung di browser.",
+    <ImageTools />
+  );
+
+const UtilityPage: React.FC = () =>
+  pageWrap(
+    "Utilitas",
+    "Rak Utilitas",
+    "Kumpulan alat kecil: JSON formatter, Base64, bulk teks, kalkulator pajak & bunga, WA link, password generator, dan lainnya.",
+    <UtilityShelf />
+  );
+
+const PrivacyRoute: React.FC = () => (
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <PrivacyPage />
+  </div>
+);
+
+const TermsRoute: React.FC = () => (
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <TermsPage />
+  </div>
+);
+
+// ---------- App ----------
+
+export const App: React.FC = () => (
+  <BrowserRouter>
+    <Routes>
+      <Route path="/" element={<Layout />}>
+        <Route index element={<Home />} />
+        <Route path="qr" element={<QRBarcodePage />} />
+        <Route path="pdf" element={<PdfPage />} />
+        <Route path="docs" element={<DocsPage />} />
+        <Route path="image" element={<ImagePage />} />
+        <Route path="utility" element={<UtilityPage />} />
+        <Route path="about" element={<About />} />
+        <Route path="privacy" element={<PrivacyRoute />} />
+        <Route path="terms" element={<TermsRoute />} />
+      </Route>
+    </Routes>
+  </BrowserRouter>
+);
