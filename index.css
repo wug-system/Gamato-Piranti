@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+img, canvas, video, svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+* { min-width: 0; }
+
+.scroll-area {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Blob animations for hero */
+@keyframes blob {
+  0%   { transform: translate(0, 0) scale(1); }
+  33%  { transform: translate(30px, -50px) scale(1.1); }
+  66%  { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+.animate-blob { animation: blob 7s infinite; }
+.animation-delay-2000 { animation-delay: 2s; }
+.animation-delay-4000 { animation-delay: 4s; }
