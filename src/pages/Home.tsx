@@ -52,7 +52,7 @@ const features = [
   { icon: <Cpu className="w-5 h-5 text-green-400" />, text: 'Semua diproses langsung di perangkatmu — privasi terjaga penuh' },
   { icon: <Lock className="w-5 h-5 text-green-400" />, text: 'Tanpa akun, tanpa registrasi, tanpa biaya tersembunyi' },
   { icon: <ShieldCheck className="w-5 h-5 text-green-400" />, text: 'File kamu tidak pernah meninggalkan perangkatmu' },
-  { icon: <Zap className="w-5 h-5 text-green-400" />, text: 'Cepat, ringan, dan bekerja dengan optimal' },
+  { icon: <Zap className="w-5 h-5 text-green-400" />, text: 'Cepat, ringan, dan bekerja bahkan tanpa koneksi internet' },
 ];
 
 const containerVariants = {
@@ -81,7 +81,7 @@ export default function Home() {
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: 'easeOut' }}>
             <span className="inline-flex items-center space-x-2 bg-blue-50 text-blue-700 px-4 py-1.5 rounded-full text-sm font-semibold mb-8 ring-1 ring-blue-100">
               <Sparkles className="w-4 h-4" />
-              <span>Versi 2.0 — Intermuka lebih rapi, fitur semakin lengkap</span>
+              <span>Versi 2.0 — UI dirombak total, fitur makin lengkap</span>
             </span>
 
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-slate-900 mb-6 leading-[1.1]">
