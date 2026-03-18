@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Menu, X, ChevronDown,
-  FileText, Image, QrCode, SlidersHorizontal,
+  FileText, Image as ImageIcon, QrCode, SlidersHorizontal,
   Zap, Barcode, Info, BookOpen, AlignLeft, Code2,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -30,9 +30,9 @@ const menuGroups = [
   {
     id: 'gambar' as const,
     title: 'Gambar',
-    icon: <Image className="w-4 h-4" />,
+    icon: <ImageIcon className="w-4 h-4" />,
     items: [
-      { name: 'Image Lab', path: '/image', icon: <Image className="w-4 h-4 text-orange-500" />, desc: 'Kompres, resize, konversi, putar' },
+      { name: 'Image Lab', path: '/image', icon: <ImageIcon className="w-4 h-4 text-orange-500" />, desc: 'Kompres, resize, konversi, putar' },
     ],
   },
   {
