@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import {
   QrCode, Barcode, FileText, FilePlus, FileOutput, FileX, RotateCw,
-  Layers, Image, FileImage, AlignLeft, Download, Upload, Trash2, RefreshCw,
+  Layers, Image as ImageIcon, FileImage, AlignLeft, Download, Upload, Trash2, RefreshCw,
   Plus, Minus, Settings2, Palette, Wifi, Mail, Phone, Link2, Type,
   SlidersHorizontal, Code2, ListOrdered, Radio, Calculator, TrendingUp,
   BarChart3, MessageCircle, KeyRound, Eraser, CheckCheck, Copy,
@@ -1092,7 +1092,7 @@ const ImageTools: React.FC = () => {
         {/* LEFT */}
         <div className="space-y-5">
           {files.length === 0 ? (
-            <Dropzone onFiles={addFiles} accept="image/*" multiple label="Drop gambar di sini" sublabel="JPG, PNG, WEBP — bisa beberapa file" icon={<Image className="w-8 h-8" />} isDragging={isDragging} setIsDragging={setIsDragging} />
+            <Dropzone onFiles={addFiles} accept="image/*" multiple label="Drop gambar di sini" sublabel="JPG, PNG, WEBP — bisa beberapa file" icon={<ImageIcon className="w-8 h-8" />} isDragging={isDragging} setIsDragging={setIsDragging} />
           ) : (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="flex items-center justify-between px-5 py-3 bg-slate-50 border-b border-slate-100">
@@ -1643,7 +1643,7 @@ const UtilityShelf: React.FC = () => {
       {tab === "meta" && (
         <PanelCard title="Hapus Metadata Gambar" subtitle="EXIF, GPS, dan data sensitif lainnya dihapus via re-encode canvas">
           <div className="space-y-4 max-w-lg">
-            <Dropzone onFiles={f => setMetaFiles(f.filter(f2 => f2.type.startsWith("image/")))} accept="image/*" label="Drop gambar di sini" sublabel="Bisa pilih beberapa sekaligus" icon={<Image className="w-8 h-8" />} />
+            <Dropzone onFiles={f => setMetaFiles(f.filter(f2 => f2.type.startsWith("image/")))} accept="image/*" label="Drop gambar di sini" sublabel="Bisa pilih beberapa sekaligus" icon={<ImageIcon className="w-8 h-8" />} />
             {metaFiles.length > 0 && (
               <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
                 <p className="text-sm font-semibold text-slate-700">{metaFiles.length} gambar dipilih</p>
