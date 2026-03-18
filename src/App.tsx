@@ -650,7 +650,7 @@ const PdfTools: React.FC = () => {
       {/* Mode cards */}
       <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
         {PDF_MODES.map(m => (
-          <button key={m.id} type="button" onClick={() => { setMode(m.id); setFiles([]); setInfo(null); }}
+          <button key={m.id} type="button" onClick={() => { setMode(m.id as PdfMode); setFiles([]); setInfo(null); }}
             className={cn("flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 text-center transition-all",
               mode === m.id ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50")}>
             <span className={cn("transition-colors", mode === m.id ? "text-blue-600" : "text-slate-400")}>{m.icon}</span>
@@ -996,7 +996,9 @@ const DocTools: React.FC = () => {
   );
 };
 
-const IMG_MODES: { id: string; label: string; icon: React.ReactNode }[] = [
+type ImageMode = "compress" | "resize" | "convert" | "rotate";
+
+const IMG_MODES: { id: ImageMode; label: string; icon: React.ReactNode }[] = [
   { id: "compress", label: "Kompres",         icon: <FileDown      className="w-5 h-5" /> },
   { id: "resize",   label: "Ubah Ukuran",     icon: <ArrowLeftRight className="w-5 h-5" /> },
   { id: "convert",  label: "Konversi Format", icon: <Wand2         className="w-5 h-5" /> },
@@ -1004,8 +1006,6 @@ const IMG_MODES: { id: string; label: string; icon: React.ReactNode }[] = [
 ];
 
 // ─── Image Lab ────────────────────────────────────────────────────────────────
-
-type ImageMode = "compress" | "resize" | "convert" | "rotate";
 
 const ImageTools: React.FC = () => {
   const [mode, setMode] = useState<ImageMode>("compress");
@@ -1079,7 +1079,7 @@ const ImageTools: React.FC = () => {
       {/* Mode tabs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {IMG_MODES.map(m => (
-          <button key={m.id} type="button" onClick={() => { setMode(m.id); setFiles([]); setPreviewUrls([]); setInfo(null); }}
+          <button key={m.id} type="button" onClick={() => { setMode(m.id as ImageMode); setFiles([]); setPreviewUrls([]); setInfo(null); }}
             className={cn("flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all",
               mode === m.id ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:border-slate-300")}>
             <span className={cn("transition-colors", mode === m.id ? "text-blue-600" : "text-slate-400")}>{m.icon}</span>
@@ -1404,8 +1404,8 @@ const UtilityShelf: React.FC = () => {
     <div className="space-y-5">
       {/* Tab selector */}
       <div className="flex flex-wrap gap-2">
-        {UTILITY_UTILITY_TABS.map(t => (
-          <button key={t.id} type="button" onClick={() => setTab(t.id)}
+        {UTILITY_TABS.map(t => (
+          <button key={t.id} type="button" onClick={() => setTab(t.id as Tab)}
             className={cn("flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold border-2 transition-all",
               tab === t.id ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50")}>
             {t.icon}<span>{t.label}</span>
